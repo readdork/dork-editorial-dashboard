@@ -154,36 +154,50 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
     )
   }
 
-  // Stephen sends back with feedback
-  async function handleSendBackWithFeedback() {
+  // Send feedback (Stephen to Dan or Dan to Stephen)
+  async function handleSendFeedback() {
     if (!editingDraft || !feedbackText.trim()) return
     
     try {
-      const { error } = await supabase
+      // Add feedback to thread
+      const { error: feedbackError } = await supabase
+        .from('editorial_draft_feedback')
+        .insert({
+          draft_id: editingDraft.id,
+          author: userRole,
+          message: feedbackText,
+        })
+      
+      if (feedbackError) throw feedbackError
+      
+      // Update draft status based on who sent feedback
+      const newStatus = userRole === 'stephen' ? 'draft' : 'in_review'
+      
+      await supabase
         .from('editorial_drafts')
         .update({
-          status: 'draft',
-          feedback: feedbackText,
+          status: newStatus,
           updated_at: new Date().toISOString(),
         })
         .eq('id', editingDraft.id)
       
-      if (error) throw error
+      // Notify the other person
+      const action = userRole === 'stephen' ? 'requested changes' : 'submitted revisions'
       
       await telegramApi.sendNotification(
-        'Draft Needs Revision',
-        `Stephen sent back "${formData.title}" with feedback:\n${feedbackText}`,
+        `Draft ${action}`,
+        `${userRole === 'stephen' ? 'Stephen' : 'Dan'} ${action} on "${formData.title}"\n\nFeedback: ${feedbackText}`,
         'high'
       )
       
       setDrafts(drafts.map(d => 
         d.id === editingDraft.id 
-          ? { ...d, status: 'draft', feedback: feedbackText }
+          ? { ...d, status: newStatus }
           : d
       ))
       setShowFeedbackModal(false)
-      setShowEditor(false)
       setFeedbackText('')
+      setShowEditor(false)
     } catch (err) {
       alert('Could not send feedback.')
     }
@@ -501,10 +515,10 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
                   <button
                     onClick={() => setShowFeedbackModal(true)}
                     disabled={publishing}
-                    className="btn-secondary bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
+                    className="btn-secondary bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400"
                   >
-                    <X className="w-4 h-4" />
-                    Send Back with Feedback
+                    <MessageSquare className="w-4 h-4" />
+                    Request Changes
                   </button>
                   <button
                     onClick={handleApproveAndPublish}
@@ -515,6 +529,16 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
                     {publishing ? 'Publishing...' : 'Approve & Publish to WP'}
                   </button>
                 </>
+              )}
+              
+              {userRole === 'dan' && editingDraft?.status === 'draft' && (
+                <button
+                  onClick={() => setShowFeedbackModal(true)}
+                  className="btn-secondary bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Send Update to Stephen
+                </button>
               )}
             </div>
           </div>
@@ -529,15 +553,21 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold mb-4">Send Back with Feedback</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {userRole === 'stephen' ? 'Request Changes' : 'Send Update'}
+            </h3>
             <p className="text-sm text-gray-500 mb-4">
-              Explain what needs to be changed so Dan can learn:
+              {userRole === 'stephen' 
+                ? 'What needs to be changed? Be specific so Dan can learn:'
+                : 'What did you change? Let Stephen know:'}
             </p>
             <textarea
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               className="editor-input min-h-[120px]"
-              placeholder="e.g., The tone is too promotional. Remove phrases like 'hotly-tipped' and focus on facts. Also check the date formatting..."
+              placeholder={userRole === 'stephen' 
+                ? "e.g., The tone is too promotional. Remove phrases like 'hotly-tipped' and focus on facts. Also check the date formatting..."
+                : "e.g., Fixed the date formatting, removed promotional language, added tour dates..."}
               autoFocus
             />
             <div className="flex justify-end gap-2 mt-4">
@@ -548,11 +578,14 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
                 Cancel
               </button>
               <button
-                onClick={handleSendBackWithFeedback}
+                onClick={handleSendFeedback}
                 disabled={!feedbackText.trim()}
-                className="btn-primary bg-red-600 hover:bg-red-700"
+                className={userRole === 'stephen' 
+                  ? 'btn-primary bg-amber-600 hover:bg-amber-700'
+                  : 'btn-primary bg-blue-600 hover:bg-blue-700'
+                }
               >
-                Send Back
+                {userRole === 'stephen' ? 'Send Feedback' : 'Send Update'}
               </button>
             </div>
           </div>
