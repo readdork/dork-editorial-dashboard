@@ -7,10 +7,11 @@ import {
   Star, 
   ExternalLink, 
   Plus,
-  Loader2,
+  Loader2, 
   AlertCircle,
   Inbox,
-  Search
+  Search,
+  RefreshCw
 } from 'lucide-react'
 
 interface FeedInboxProps {
@@ -27,6 +28,8 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+
   useEffect(() => {
     fetchItems()
   }, [])
@@ -38,9 +41,10 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
         .from('editorial_stories')
         .select('*')
         .order('created_at', { ascending: false })
-      
+
       if (error) throw error
       setItems(data || [])
+      setLastRefresh(new Date())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load feed items')
     } finally {
@@ -55,9 +59,9 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
         .from('editorial_stories')
         .update({ status: 'approved', updated_at: new Date().toISOString() })
         .eq('id', id)
-      
+
       if (updateError) throw updateError
-      
+
       // Get the story details
       const story = items.find(i => i.id === id)
       if (story) {
@@ -66,7 +70,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-|-$/g, '')
           .substring(0, 50)
-        
+
         const { error: draftError } = await supabase
           .from('editorial_drafts')
           .insert([{
@@ -79,9 +83,9 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
             status: 'draft',
             created_by: 'dan'
           }])
-        
+
         if (draftError) throw draftError
-        
+
         // Notify via Telegram
         await telegramApi.sendNotification(
           'Story Approved & Draft Created',
@@ -89,8 +93,8 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
           'high'
         )
       }
-      
-      setItems(items.map(item => 
+
+      setItems(items.map(item =>
         item.id === id ? { ...item, status: 'approved' } : item
       ))
     } catch (err) {
@@ -104,10 +108,10 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
         .from('editorial_stories')
         .update({ status: 'rejected', updated_at: new Date().toISOString() })
         .eq('id', id)
-      
+
       if (error) throw error
-      
-      setItems(items.map(item => 
+
+      setItems(items.map(item =>
         item.id === id ? { ...item, status: 'rejected' } : item
       ))
     } catch (err) {
@@ -118,7 +122,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   async function handleAddItem(e: React.FormEvent) {
     e.preventDefault()
     if (!newItem.title || !newItem.url) return
-    
+
     setAdding(true)
     try {
       const { data, error } = await supabase
@@ -134,13 +138,13 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
         }])
         .select()
         .single()
-      
+
       if (error) throw error
-      
+
       setItems([data, ...items])
       setShowAddModal(false)
       setNewItem({ title: '', url: '', source: '', artist_names: '' })
-      
+
       const notifyUser = userRole === 'dan' ? 'Stephen' : 'Dan'
       await telegramApi.sendNotification(
         'New story added',
@@ -188,16 +192,30 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
           <h1 className="text-2xl font-bold">Feed Inbox</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {pendingCount} pending, {approvedCount} approved
+            <span className="ml-2 text-xs">
+              (Refreshed: {lastRefresh.toLocaleTimeString()})
+            </span>
           </p>
         </div>
-        
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary self-start"
-        >
-          <Plus className="w-4 h-4" />
-          Add story
-        </button>
+
+        <div className="flex gap-2 self-start">
+          <button
+            onClick={fetchItems}
+            disabled={loading}
+            className="btn-secondary"
+            title="Refresh feed"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary"
+          >
+            <Plus className="w-4 h-4" />
+            Add story
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -212,7 +230,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
             className="editor-input pl-10"
           />
         </div>
-        
+
         <div className="flex gap-2">
           {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
             <button
@@ -239,7 +257,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
           </div>
         ) : (
           filteredItems.map((item) => (
-            <StoryCard 
+            <StoryCard
               key={item.id}
               item={item}
               userRole={userRole}
@@ -256,7 +274,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-xl"
           >
             <h2 className="text-lg font-semibold mb-4">Add new story</h2>
-            
+
             <form onSubmit={handleAddItem} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">Title</label>
@@ -269,7 +287,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-1.5">URL</label>
                 <input
@@ -281,7 +299,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
                   required
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Source</label>
@@ -293,7 +311,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
                     placeholder="NME, Stereogum..."
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Artist (optional)</label>
                   <input
@@ -305,7 +323,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 pt-4">
                 <button
                   type="button"
@@ -330,12 +348,12 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   )
 }
 
-function StoryCard({ 
-  item, 
+function StoryCard({
+  item,
   userRole,
   onApprove,
   onReject
-}: { 
+}: {
   item: Story
   userRole: 'dan' | 'stephen'
   onApprove: (id: string) => void
@@ -365,10 +383,28 @@ function StoryCard({
                 <span className={statusClasses[item.status]}>{item.status}</span>
                 <span>•</span>
                 <span>{item.source}</span>
-                {item.artist_names && (
+                <span>•</span>
+                <span>{new Date(item.created_at).toLocaleString()}</span>
+                {item.section && item.section !== 'None' && (
                   <>
                     <span>•</span>
-                    <span className="text-dork-600 dark:text-dork-400">{item.artist_names}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs bg-dork-100 text-dork-700 dark:bg-dork-900/30 dark:text-dork-300">
+                      {item.section}
+                    </span>
+                  </>
+                )}
+                {item.is_festival && (
+                  <>
+                    <span>•</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                      FESTIVAL
+                    </span>
+                  </>
+                )}
+                {item.artist_names && item.artist_names.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <span className="text-dork-600 dark:text-dork-400">{item.artist_names.join(', ')}</span>
                   </>
                 )}
               </div>
