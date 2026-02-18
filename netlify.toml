@@ -5,7 +5,7 @@
 [build.environment]
   NODE_VERSION = "20"
   VITE_SUPABASE_URL = "https://tgtumixhqhzrjubppeep.supabase.co"
-  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRndHVtaXhocWh6cmp1YnBwZWVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNzE2MzMsImV4cCI6MjA3ODY0NzYzM30.zfwef_7n1kG-4nvaHU463z6TkI1RRrElq8kpoyYVG1g"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRndHVtaXhocWh6cmp1YnBwZWVwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzA3MTYzMywiZXhwIjoyMDc4NjQ3NjMzfQ.zfwef_7n1kG-4nvaHU463z6TkI1RRrElq8kpoyYVG1g"
   VITE_WORDPRESS_URL = "https://readdork.com"
   VITE_WORDPRESS_USER = "stephen@welcometothebunker.com"
   VITE_WORDPRESS_APP_PASSWORD = "bjqI TK2J zGtW EV82 2Vn0 1HrG"
