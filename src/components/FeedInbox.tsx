@@ -22,7 +22,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [newItem, setNewItem] = useState({ title: '', url: '', source: '', artist_name: '' })
+  const [newItem, setNewItem] = useState({ title: '', url: '', source: '', artist_names: '' })
   const [adding, setAdding] = useState(false)
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -127,7 +127,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
           title: newItem.title,
           url: newItem.url,
           source: newItem.source || 'Manual',
-          artist_name: newItem.artist_name || null,
+          artist_names: newItem.artist_names || null,
           status: 'pending',
           priority: false,
           created_by: userRole,
@@ -139,7 +139,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
       
       setItems([data, ...items])
       setShowAddModal(false)
-      setNewItem({ title: '', url: '', source: '', artist_name: '' })
+      setNewItem({ title: '', url: '', source: '', artist_names: '' })
       
       const notifyUser = userRole === 'dan' ? 'Stephen' : 'Dan'
       await telegramApi.sendNotification(
@@ -298,8 +298,8 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
                   <label className="block text-sm font-medium mb-1.5">Artist (optional)</label>
                   <input
                     type="text"
-                    value={newItem.artist_name}
-                    onChange={(e) => setNewItem({ ...newItem, artist_name: e.target.value })}
+                    value={newItem.artist_names}
+                    onChange={(e) => setNewItem({ ...newItem, artist_names: e.target.value })}
                     className="editor-input"
                     placeholder="Artist name"
                   />
@@ -365,10 +365,10 @@ function StoryCard({
                 <span className={statusClasses[item.status]}>{item.status}</span>
                 <span>•</span>
                 <span>{item.source}</span>
-                {item.artist_name && (
+                {item.artist_names && (
                   <>
                     <span>•</span>
-                    <span className="text-dork-600 dark:text-dork-400">{item.artist_name}</span>
+                    <span className="text-dork-600 dark:text-dork-400">{item.artist_names}</span>
                   </>
                 )}
               </div>

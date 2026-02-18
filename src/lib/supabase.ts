@@ -20,7 +20,11 @@ export type Story = {
   published_at: string
   status: 'pending' | 'approved' | 'rejected'
   priority: boolean
-  artist_name?: string
+  artist_names?: string[]
+  section?: 'Upset' | 'Hype' | 'Festivals' | 'None'
+  is_festival?: boolean
+  festival_name?: string
+  tags?: string[]
   created_at: string
   updated_at: string
   created_by: 'dan' | 'stephen'
