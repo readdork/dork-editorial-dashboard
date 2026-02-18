@@ -50,12 +50,45 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
 
   async function handleApprove(id: string) {
     try {
-      const { error } = await supabase
+      // Update story status
+      const { error: updateError } = await supabase
         .from('editorial_stories')
         .update({ status: 'approved', updated_at: new Date().toISOString() })
         .eq('id', id)
       
-      if (error) throw error
+      if (updateError) throw updateError
+      
+      // Get the story details
+      const story = items.find(i => i.id === id)
+      if (story) {
+        // Create a draft
+        const slug = story.title.toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+          .substring(0, 50)
+        
+        const { error: draftError } = await supabase
+          .from('editorial_drafts')
+          .insert([{
+            story_id: id,
+            title: story.title,
+            slug: slug,
+            excerpt: story.summary || `${story.title} - latest news from ${story.source}`,
+            content: `<p>${story.summary || 'Write article content here...'}</p>`,
+            featured_image: story.image_url,
+            status: 'draft',
+            created_by: 'dan'
+          }])
+        
+        if (draftError) throw draftError
+        
+        // Notify via Telegram
+        await telegramApi.sendNotification(
+          'Story Approved & Draft Created',
+          `Stephen approved "${story.title}"\nDan has created a draft.`,
+          'high'
+        )
+      }
       
       setItems(items.map(item => 
         item.id === id ? { ...item, status: 'approved' } : item
