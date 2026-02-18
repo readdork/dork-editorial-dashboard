@@ -10,14 +10,14 @@ interface ExtendedDraft extends Draft {
   wordpress_status?: string
 }
 
-// WordPress category IDs mapping
-function getCategoryId(section: string): number {
-  const categories: Record<string, number> = {
+// WordPress section taxonomy term IDs
+function getSectionTermId(section: string): number {
+  const sections: Record<string, number> = {
     'Upset': 6,
     'Hype': 7,
     'Festivals': 8,
   }
-  return categories[section] || 1 // Default to uncategorized
+  return sections[section] || 0
 }
 
 export function Drafts() {
@@ -78,40 +78,66 @@ export function Drafts() {
     
     setPublishing(id)
     try {
-      const wpUrl = import.meta.env.VITE_WORDPRESS_URL
-      const username = import.meta.env.VITE_WORDPRESS_USER
-      const password = import.meta.env.VITE_WORDPRESS_APP_PASSWORD
-      
-      const auth = btoa(`${username}:${password}`)
+      const gatewayUrl = '/.netlify/functions/wp-post'
+      const gatewaySecret = 'dork-gateway-secret-2026'
       
       // Convert markdown bold to HTML for WordPress
       const wpContent = draft.content
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br>\n')
       
-      const response = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${auth}`
-        },
-        body: JSON.stringify({
+      const payload = {
+        data: {
           title: draft.title,
           content: wpContent,
           excerpt: draft.excerpt,
           slug: draft.slug,
           status: 'draft',
           author: 8,
-          categories: draft.section ? [getCategoryId(draft.section)] : [],
-          tags: draft.artist_names || []
-        })
+          categories: [],
+          tags: draft.artist_names || [],
+          sections: draft.section ? [getSectionTermId(draft.section)] : []
+        }
+      }
+      
+      const timestamp = Math.floor(Date.now() / 1000).toString()
+      const bodyString = JSON.stringify(payload)
+      
+      // Create HMAC signature
+      const encoder = new TextEncoder()
+      const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(gatewaySecret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      )
+      const signature = await crypto.subtle.sign(
+        'HMAC',
+        key,
+        encoder.encode(`${timestamp}.${bodyString}`)
+      )
+      const sigHex = Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('')
+      
+      const response = await fetch(gatewayUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Timestamp': timestamp,
+          'X-Signature': sigHex
+        },
+        body: bodyString
       })
 
-      if (!response.ok) {
-        throw new Error('WordPress publish failed')
+      const result = await response.json()
+      
+      if (!result.ok) {
+        throw new Error(result.error || 'WordPress publish failed')
       }
-
-      const wpPost = await response.json()
+      
+      const wpPost = result.body
       
       await supabase.from('editorial_drafts').update({
         status: 'published',
