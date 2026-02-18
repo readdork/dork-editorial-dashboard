@@ -1,12 +1,23 @@
 import { useState, useEffect } from 'react'
-import { supabase, type Story } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, RefreshCw, ExternalLink, Clock } from 'lucide-react'
 
+interface FeedStory {
+  id: string
+  title: string
+  url: string
+  source: string
+  summary: string
+  full_content?: string
+  published_at: string
+}
+
 export function FeedInbox() {
-  const [stories, setStories] = useState<Story[]>([])
+  const [stories, setStories] = useState<FeedStory[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [fetching, setFetching] = useState<string | null>(null)
 
   useEffect(() => {
     loadStories()
@@ -45,6 +56,19 @@ export function FeedInbox() {
   async function reject(id: string) {
     await supabase.from('editorial_stories').update({ status: 'rejected' }).eq('id', id)
     setStories(stories.filter(s => s.id !== id))
+  }
+
+  async function fetchFullContent(storyId: string) {
+    setFetching(storyId)
+    try {
+      const response = await fetch(`/.netlify/functions/fetch-article?id=${storyId}`)
+      if (response.ok) {
+        await loadStories()
+      }
+    } catch (e) {
+      console.error('Failed to fetch:', e)
+    }
+    setFetching(null)
   }
 
   function formatTimeAgo(date: string) {
@@ -114,19 +138,38 @@ export function FeedInbox() {
                 
                 {expanded === story.id ? (
                   <div className="mt-4">
-                    <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed max-h-96 overflow-y-auto">
-                      {story.summary}
+                    <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap">
+                      {story.full_content || story.summary}
                     </div>
-                    <a 
-                      href={story.url} 
-                      target="_blank" 
+                    {!story.full_content && (
+                      <button
+                        onClick={() => fetchFullContent(story.id)}
+                        disabled={fetching === story.id}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
+                      >
+                        {fetching === story.id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Fetching...
+                          </>
+                        ) : (
+                          <>
+                            <ExternalLink className="w-4 h-4" />
+                            Fetch full article
+                          </>
+                        )}
+                      </button>
+                    )}
+                    <a
+                      href={story.url}
+                      target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="mt-2 ml-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
                     >
                       <ExternalLink className="w-4 h-4" />
-                      Read full article on {story.source}
+                      View on {story.source}
                     </a>
-                    <button 
+                    <button
                       onClick={() => setExpanded(null)}
                       className="mt-2 ml-4 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
                     >
