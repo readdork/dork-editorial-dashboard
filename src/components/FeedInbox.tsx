@@ -40,7 +40,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
       const { data, error } = await supabase
         .from('editorial_stories')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('published_at', { ascending: false })
 
       if (error) throw error
       setItems(data || [])
@@ -384,7 +384,7 @@ function StoryCard({
                 <span>•</span>
                 <span>{item.source}</span>
                 <span>•</span>
-                <span>{new Date(item.created_at).toLocaleString()}</span>
+                <span>{new Date(item.published_at || item.created_at).toLocaleString()}</span>
                 {item.section && item.section !== 'None' && (
                   <>
                     <span>•</span>
