@@ -10,9 +10,11 @@ export type Story = {
   title: string
   url: string
   source: string
+  source_type: 'rss' | 'gmail'
   summary: string
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
+  published_at: string
 }
 
 export type Draft = {
