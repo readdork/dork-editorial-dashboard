@@ -28,13 +28,10 @@ export function FeedInbox() {
   async function refreshFeeds() {
     setLoading(true)
     try {
-      // Call backend to trigger Feedly import
-      const response = await fetch('/.netlify/functions/refresh-feeds', { method: 'POST' })
-      if (!response.ok) {
-        console.log('Feedly refresh failed, RSS backup may be used')
-      }
+      // Trigger RSS import only (Feedly is automatic, don't waste API calls)
+      await fetch('/.netlify/functions/trigger-rss-import', { method: 'POST' })
     } catch (e) {
-      console.log('Refresh endpoint not available')
+      // Ignore errors, just reload
     }
     // Always reload from database
     await loadStories()
@@ -58,7 +55,7 @@ export function FeedInbox() {
         <h1 className="text-2xl font-bold">Feed Inbox ({stories.length})</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">Updated: {lastRefresh.toLocaleTimeString()}</span>
-          <button onClick={refreshFeeds} className="p-2 hover:bg-gray-100 rounded" title="Refresh feeds (tries Feedly first, then RSS)">
+          <button onClick={refreshFeeds} className="p-2 hover:bg-gray-100 rounded" title="Refresh RSS feeds only">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
