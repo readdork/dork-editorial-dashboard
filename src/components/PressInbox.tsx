@@ -79,7 +79,9 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate article')
+        const errorText = await response.text()
+        console.error('Function error:', errorText)
+        throw new Error(`Failed to generate article: ${response.status}`)
       }
 
       const article = await response.json()
@@ -139,8 +141,8 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
       ))
       setSelectedRelease(null)
     } catch (err) {
-      console.error(err)
-      alert('Could not approve press release.')
+      console.error('Approve error:', err)
+      alert('Could not approve press release. Check console for details.')
     }
   }
 
