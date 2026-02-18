@@ -114,12 +114,21 @@ export function FeedInbox() {
                 
                 {expanded === story.id ? (
                   <div className="mt-4">
-                    <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
+                    <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed max-h-96 overflow-y-auto">
                       {story.summary}
                     </div>
+                    <a 
+                      href={story.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Read full article on {story.source}
+                    </a>
                     <button 
                       onClick={() => setExpanded(null)}
-                      className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
+                      className="mt-2 ml-4 text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
                     >
                       <ChevronUp className="w-4 h-4" /> Show less
                     </button>
