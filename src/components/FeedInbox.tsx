@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react'
 import { supabase, type Story } from '../lib/supabase'
 import { telegramApi } from '../lib/telegram'
-import { 
-  CheckCircle, 
-  XCircle, 
-  Star, 
-  ExternalLink, 
+import {
+  CheckCircle,
+  XCircle,
+  Star,
+  ExternalLink,
   Plus,
-  Loader2, 
+  Loader2,
   AlertCircle,
   Inbox,
   Search,
-  RefreshCw
+  RefreshCw,
+  Globe
 } from 'lucide-react'
 
 interface FeedInboxProps {
@@ -99,6 +100,43 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
       ))
     } catch (err) {
       alert('Could not approve item. Try again.')
+    }
+  }
+
+  async function handleSyncFeedly() {
+    setLoading(true)
+    try {
+      // Trigger sync via API
+      const response = await fetch('/.netlify/functions/sync-feedly', { method: 'POST' })
+      if (!response.ok) throw new Error('Sync failed')
+
+      // Wait then refresh
+      await new Promise(r => setTimeout(r, 2000))
+      await fetchItems()
+    } catch (err) {
+      // Fallback: just refresh from Supabase
+      await fetchItems()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleClearAll() {
+    if (!confirm('Mark all pending stories as rejected?')) return
+
+    try {
+      const { error } = await supabase
+        .from('editorial_stories')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('status', 'pending')
+
+      if (error) throw error
+
+      setItems(items.map(item =>
+        item.status === 'pending' ? { ...item, status: 'rejected' } : item
+      ))
+    } catch (err) {
+      alert('Could not clear items.')
     }
   }
 
@@ -198,16 +236,35 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
           </p>
         </div>
 
-        <div className="flex gap-2 self-start">
+        <div className="flex flex-wrap gap-2 self-start">
           <button
             onClick={fetchItems}
             disabled={loading}
             className="btn-secondary"
-            title="Refresh feed"
+            title="Refresh from database"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
+          <button
+            onClick={handleSyncFeedly}
+            disabled={loading}
+            className="btn-secondary bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400"
+            title="Sync from Feedly now"
+          >
+            <Globe className="w-4 h-4" />
+            Sync Feedly
+          </button>
+          {pendingCount > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="btn-secondary bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
+              title="Reject all pending"
+            >
+              <XCircle className="w-4 h-4" />
+              Clear All
+            </button>
+          )}
           <button
             onClick={() => setShowAddModal(true)}
             className="btn-primary"
@@ -348,12 +405,19 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   )
 }
 
-function StoryCard({
-  item,
+// Helper to decode HTML entities
+function decodeHtmlEntities(text: string): string {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+}
+
+function StoryCard({ 
+  item, 
   userRole,
   onApprove,
   onReject
-}: {
+}: { 
   item: Story
   userRole: 'dan' | 'stephen'
   onApprove: (id: string) => void
@@ -365,77 +429,77 @@ function StoryCard({
     rejected: 'status-rejected',
   }
 
+  const decodedTitle = decodeHtmlEntities(item.title);
+
   return (
     <div className={`editor-card ${item.priority ? 'ring-2 ring-dork-500/20' : ''}`}>
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         {/* Priority indicator */}
         {item.priority && (
-          <div className="flex-shrink-0">
-            <Star className="w-5 h-5 text-dork-500 fill-dork-500" />
+          <div className="flex-shrink-0 mt-1">
+            <Star className="w-4 h-4 sm:w-5 sm:h-5 text-dork-500 fill-dork-500" />
           </div>
         )}
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="font-medium text-lg leading-tight">{item.title}</h3>
-              <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-base sm:text-lg leading-tight break-words">{decodedTitle}</h3>
+              <div className="flex flex-wrap items-center gap-2 mt-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 <span className={statusClasses[item.status]}>{item.status}</span>
-                <span>•</span>
-                <span>{item.source}</span>
-                <span>•</span>
-                <span>{new Date(item.published_at || item.created_at).toLocaleString()}</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="truncate max-w-[120px] sm:max-w-none">{item.source}</span>
+                <span className="hidden sm:inline">•</span>
+                <span>{new Date(item.published_at || item.created_at).toLocaleString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</span>
                 {item.section && item.section !== 'None' && (
-                  <>
-                    <span>•</span>
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-dork-100 text-dork-700 dark:bg-dork-900/30 dark:text-dork-300">
-                      {item.section}
-                    </span>
-                  </>
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-dork-100 text-dork-700 dark:bg-dork-900/30 dark:text-dork-300">
+                    {item.section}
+                  </span>
                 )}
                 {item.is_festival && (
-                  <>
-                    <span>•</span>
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                      FESTIVAL
-                    </span>
-                  </>
-                )}
-                {item.artist_names && item.artist_names.length > 0 && (
-                  <>
-                    <span>•</span>
-                    <span className="text-dork-600 dark:text-dork-400">{item.artist_names.join(', ')}</span>
-                  </>
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    FEST
+                  </span>
                 )}
               </div>
+              {item.artist_names && item.artist_names.length > 0 && (
+                <div className="mt-1 text-xs sm:text-sm text-dork-600 dark:text-dork-400">
+                  {item.artist_names.join(', ')}
+                </div>
+              )}
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <a
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="p-2 sm:p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 title="Open link"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5" />
               </a>
 
               {userRole === 'stephen' && item.status === 'pending' && (
                 <>
                   <button
                     onClick={() => onApprove(item.id)}
-                    className="p-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 transition-colors"
+                    className="p-2 sm:p-2.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 transition-colors"
                     title="Approve"
                   >
-                    <CheckCircle className="w-4 h-4" />
+                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                   <button
                     onClick={() => onReject(item.id)}
-                    className="p-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 transition-colors"
+                    className="p-2 sm:p-2.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 transition-colors"
                     title="Reject"
                   >
-                    <XCircle className="w-4 h-4" />
+                    <XCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </>
               )}
