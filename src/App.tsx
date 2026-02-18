@@ -1,46 +1,52 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ThemeProvider } from './contexts/ThemeContext'
+import { useState } from 'react'
+import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
-import { LoginScreen } from './components/LoginScreen'
-import { Layout } from './components/Layout'
-import { FeedInbox } from './components/FeedInbox'
-import { DraftQueue } from './components/DraftQueue'
-import { WordPressManager } from './components/WordPressManager'
-import { BarryImport } from './components/BarryImport'
-import { Notifications } from './components/Notifications'
-import { PressInbox } from './components/PressInbox'
+import { Login } from './components/Login'
+import { Inbox } from './components/Inbox'
+import { Drafts } from './components/Drafts'
+import { LogOut } from 'lucide-react'
 
 function AppContent() {
-  const { isAuthenticated, userRole, logout } = useAuth()
+  const { isAuthenticated, logout } = useAuth()
+  const [tab, setTab] = useState<'inbox' | 'drafts'>('inbox')
 
-  if (!isAuthenticated) {
-    return <LoginScreen />
-  }
+  if (!isAuthenticated) return <Login />
 
   return (
     <BrowserRouter>
-      <Layout userRole={userRole!} onRoleSwitch={logout}>
-        <Routes>
-          <Route path="/" element={<FeedInbox userRole={userRole!} />} />
-          <Route path="/press" element={<PressInbox userRole={userRole!} />} />
-          <Route path="/drafts" element={<DraftQueue userRole={userRole!} />} />
-          <Route path="/wordpress" element={<WordPressManager userRole={userRole!} />} />
-          <Route path="/barry" element={<BarryImport userRole={userRole!} />} />
-          <Route path="/notifications" element={<Notifications userRole={userRole!} />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Layout>
+      <div className="min-h-screen">
+        <header className="border-b p-4 flex justify-between items-center">
+          <div className="flex gap-4">
+            <button 
+              onClick={() => setTab('inbox')}
+              className={`px-4 py-2 rounded ${tab === 'inbox' ? 'bg-blue-100 text-blue-700' : ''}`}
+            >
+              Inbox
+            </button>
+            <button 
+              onClick={() => setTab('drafts')}
+              className={`px-4 py-2 rounded ${tab === 'drafts' ? 'bg-blue-100 text-blue-700' : ''}`}
+            >
+              Drafts
+            </button>
+          </div>
+          
+          <button onClick={logout} className="p-2">
+            <LogOut className="w-5 h-5" />
+          </button>
+        </header>
+        
+        {tab === 'inbox' ? <Inbox /> : <Drafts />}
+      </div>
     </BrowserRouter>
   )
 }
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
 

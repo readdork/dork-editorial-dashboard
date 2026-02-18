@@ -5,45 +5,24 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Table names
-export const STORIES_TABLE = 'editorial_stories'
-export const DRAFTS_TABLE = 'editorial_drafts'
-
-// Database types
 export type Story = {
   id: string
   title: string
   url: string
   source: string
-  summary?: string
-  image_url?: string
-  published_at: string
+  summary: string
   status: 'pending' | 'approved' | 'rejected'
-  priority: boolean
-  artist_names?: string[]
-  section?: 'Upset' | 'Hype' | 'Festivals' | 'None'
-  is_festival?: boolean
-  festival_name?: string
-  tags?: string[]
   created_at: string
-  updated_at: string
-  created_by: 'dan' | 'stephen'
 }
 
 export type Draft = {
   id: string
-  story_id?: string
+  story_id: string
   title: string
   slug: string
   excerpt: string
   content: string
-  featured_image?: string
-  status: 'draft' | 'in_review' | 'approved' | 'published'
-  wordpress_post_id?: number
-  wordpress_status?: 'draft' | 'publish'
-  barry_imported: boolean
+  status: 'draft' | 'in_review' | 'approved'
+  feedback: string
   created_at: string
-  updated_at: string
-  created_by: 'dan' | 'stephen'
-  published_at?: string
 }
