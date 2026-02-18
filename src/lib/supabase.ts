@@ -5,58 +5,19 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
-// For server-side operations, use the Netlify Function proxy
-export const supabaseServer = {
-  async query(table: string, query: string = '') {
-    const response = await fetch(`/.netlify/functions/supabase/${table}${query}`, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return response.json()
-  },
-  
-  async insert(table: string, data: any) {
-    const response = await fetch(`/.netlify/functions/supabase/${table}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return response.json()
-  },
-  
-  async update(table: string, id: string, data: any) {
-    const response = await fetch(`/.netlify/functions/supabase/${table}?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return response.json()
-  }
-}
-
-// Database types
-export type FeedItem = {
+// Database types - mapped to existing feed_items schema
+export type Story = {
   id: string
   title: string
-  url: string
-  source: string
-  summary?: string
+  url: string  // mapped from 'link'
+  source: string  // mapped from 'source_name'
+  summary?: string  // mapped from 'excerpt'
   image_url?: string
-  published_at: string
+  published_at: string  // mapped from 'pub_date'
   status: 'pending' | 'approved' | 'rejected'
   priority: boolean
   artist_name?: string
   created_at: string
-  updated_at: string
-  created_by: 'dan' | 'stephen'
 }
 
 export type Draft = {
@@ -67,24 +28,23 @@ export type Draft = {
   content: string
   featured_image?: string
   status: 'draft' | 'in_review' | 'approved' | 'published'
-  wordpress_post_id?: number
-  wordpress_status?: 'draft' | 'publish'
-  barry_imported: boolean
   created_at: string
-  updated_at: string
   created_by: 'dan' | 'stephen'
-  published_at?: string
 }
 
-export type WordPressArticle = {
-  id: string
-  wp_post_id: number
-  title: string
-  url: string
-  excerpt: string
-  featured_image?: string
-  published_at: string
-  barry_imported: boolean
-  barry_imported_at?: string
-  created_at: string
+// Helper to map database fields to app fields
+export function mapStoryFromDB(item: any): Story {
+  return {
+    id: item.id,
+    title: item.title,
+    url: item.link || item.url || '',
+    source: item.source_name || item.source || 'Unknown',
+    summary: item.excerpt || item.summary,
+    image_url: item.image_url,
+    published_at: item.pub_date || item.published_at || item.created_at,
+    status: item.status || 'pending',
+    priority: item.priority || false,
+    artist_name: item.artist_name,
+    created_at: item.created_at
+  }
 }
