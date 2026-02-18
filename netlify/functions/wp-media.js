@@ -11,19 +11,6 @@ export async function handler(event) {
     const v = verifyHmac(event, rawBody);
     if (!v.ok) return text(401, v.why);
 
-    // Incoming JSON schema:
-    // {
-    //   "filename": "image.jpg",
-    //   "mime": "image/jpeg",
-    //   "dataBase64": "<base64>",
-    //   "title": "Optional",
-    //   "altText": "Optional",
-    //   "caption": "Optional (HTML allowed)",
-    //   "description": "Optional (HTML allowed)",
-    //   "status": "inherit" (optional; WP default is fine),
-    //   "postId": 123 (optional: attach to post),
-    //   "setAsFeatured": true/false (optional)
-    // }
     let payload;
     try {
       payload = JSON.parse(rawBody);
@@ -41,7 +28,6 @@ export async function handler(event) {
     const bytes = Buffer.from(dataBase64, "base64");
 
     // Upload binary directly to WP media endpoint
-    // WP accepts raw body with Content-Disposition + Content-Type
     const uploadRes = await wpFetchWithRetry("/wp-json/wp/v2/media", {
       method: "POST",
       headers: {
@@ -67,24 +53,38 @@ export async function handler(event) {
     }
 
     const mediaId = media?.id;
-
-    // Update media metadata if provided
-    const meta = {};
-    if (payload.title) meta.title = payload.title;
-    if (payload.altText !== undefined) meta.alt_text = payload.altText;
-    if (payload.caption) meta.caption = payload.caption;
-    if (payload.description) meta.description = payload.description;
-
-    if (mediaId && Object.keys(meta).length > 0) {
-      await wpFetchWithRetry(`/wp-json/wp/v2/media/${mediaId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(meta),
-      });
+    if (!mediaId) {
+      return text(502, "Upload succeeded but no media id returned");
     }
 
-    // Attach to post if requested
-    if (mediaId && payload.postId) {
+    // Update metadata (title, caption, description, alt text)
+    const metaPatch = {};
+    if (payload.title) metaPatch.title = payload.title;
+    if (payload.caption) metaPatch.caption = payload.caption;
+    if (payload.description) metaPatch.description = payload.description;
+    // WP stores alt text via a separate meta field in REST
+    if (payload.altText) metaPatch.alt_text = payload.altText;
+    // Attach to a post (optional)
+    if (payload.postId) metaPatch.post = payload.postId;
+
+    // Only patch if we have something to patch
+    const needsPatch = Object.keys(metaPatch).length > 0;
+    let finalMedia = media;
+    if (needsPatch) {
+      const patchRes = await wpFetchWithRetry(`/wp-json/wp/v2/media/${mediaId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(metaPatch),
+      });
+      if (patchRes.status >= 200 && patchRes.status < 300) {
+        try {
+          finalMedia = JSON.parse(patchRes.text);
+        } catch {}
+      }
+    }
+
+    // Set as featured image if requested + postId present
+    if (payload.setAsFeatured && payload.postId) {
       await wpFetchWithRetry(`/wp-json/wp/v2/posts/${payload.postId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,9 +93,9 @@ export async function handler(event) {
     }
 
     return {
-      statusCode: uploadRes.status,
+      statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: uploadRes.text,
+      body: JSON.stringify({ ok: true, mediaId, media: finalMedia }),
     };
   } catch (e) {
     return json(500, { error: String(e?.message || e) });
