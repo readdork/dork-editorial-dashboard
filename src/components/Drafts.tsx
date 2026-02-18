@@ -85,7 +85,8 @@ export function Drafts() {
           content: draft.content,
           excerpt: draft.excerpt,
           slug: draft.slug,
-          status: 'draft'
+          status: 'draft',
+          author: 8
         })
       })
 
