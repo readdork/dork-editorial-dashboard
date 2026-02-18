@@ -14,10 +14,10 @@
   VITE_TELEGRAM_BOT_TOKEN = "8334499958:AAF6FCeRsQfwVNhSqLrD_RBDjouOxv7FC9Y"
   VITE_TELEGRAM_CHAT_ID = "8397675850"
 
-# Function environment variables - SET THESE IN NETLIFY UI:
-# SUPABASE_URL = https://phztsarcdhownmmsqrih.supabase.co
-# SUPABASE_SERVICE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoenRzYXJjZGhvd25tbXNxcmloIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTM5MzQwNSwiZXhwIjoyMDg2OTY5NDA1fQ.RA47H7LPvVnY6kttcuvdtOze-fYnZIi1er7KJsPgM_0
-# FEEDLY_TOKEN = (from credentials)
+# Function environment variables
+[context.production.environment]
+  SUPABASE_URL = "https://phztsarcdhownmmsqrih.supabase.co"
+  SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoenRzYXJjZGhvd25tbXNxcmloIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTM5MzQwNSwiZXhwIjoyMDg2OTY5NDA1fQ.RA47H7LPvVnY6kttcuvdtOze-fYnZIi1er7KJsPgM_0"
 
 [[redirects]]
   from = "/*"
