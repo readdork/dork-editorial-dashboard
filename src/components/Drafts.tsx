@@ -96,7 +96,6 @@ export function Drafts() {
           status: 'draft',
           author: 8,
           categories: [],
-          tags: draft.artist_names || [],
           sections: draft.section ? [getSectionTermId(draft.section)] : []
         }
       }
