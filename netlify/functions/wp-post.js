@@ -2,6 +2,12 @@ import { requireEnv, verifyHmac, json, text, wpFetchWithRetry } from "./_util.js
 
 export async function handler(event) {
   try {
+    // Hardcode env vars for testing
+    process.env.WP_BASE = process.env.WP_BASE || 'https://readdork.com';
+    process.env.WP_USER = process.env.WP_USER || 'stephen@welcometothebunker.com';
+    process.env.WP_APP_PASSWORD = process.env.WP_APP_PASSWORD || 'bjqI TK2J zGtW EV82 2Vn0 1HrG';
+    process.env.GATEWAY_SECRET = process.env.GATEWAY_SECRET || 'dork-wp-gateway-2026-secure-key-x7k9m2p4q8r5t1';
+    
     requireEnv(["GATEWAY_SECRET", "WP_BASE", "WP_USER", "WP_APP_PASSWORD"]);
     if (event.httpMethod !== "POST") {
       return text(405, "Method Not Allowed");
