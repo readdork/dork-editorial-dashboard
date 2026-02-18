@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, type Draft } from '../lib/supabase'
-import { CheckCircle, MessageSquare, Loader2, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { CheckCircle, MessageSquare, Loader2, ChevronDown, ChevronUp, Trash2, Globe } from 'lucide-react'
 
 export function Drafts() {
   const [drafts, setDrafts] = useState<Draft[]>([])
@@ -8,6 +8,7 @@ export function Drafts() {
   const [feedback, setFeedback] = useState('')
   const [showFeedback, setShowFeedback] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState<string | null>(null)
 
   useEffect(() => {
     fetchDrafts()
@@ -26,6 +27,54 @@ export function Drafts() {
   async function approve(id: string) {
     await supabase.from('editorial_drafts').update({ status: 'approved' }).eq('id', id)
     setDrafts(drafts.filter(d => d.id !== id))
+  }
+
+  async function publishToWordPress(draft: Draft) {
+    setPublishing(draft.id)
+    try {
+      // Call WordPress API
+      const wpUrl = import.meta.env.VITE_WORDPRESS_URL
+      const username = import.meta.env.VITE_WORDPRESS_USER
+      const password = import.meta.env.VITE_WORDPRESS_APP_PASSWORD
+      
+      const auth = btoa(`${username}:${password}`)
+      
+      const response = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${auth}`
+        },
+        body: JSON.stringify({
+          title: draft.title,
+          content: draft.content,
+          excerpt: draft.excerpt,
+          slug: draft.slug,
+          status: 'draft'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('WordPress publish failed')
+      }
+
+      const wpPost = await response.json()
+      
+      // Update draft with WP ID
+      await supabase.from('editorial_drafts').update({
+        status: 'approved',
+        wordpress_post_id: wpPost.id,
+        wordpress_status: 'draft'
+      }).eq('id', draft.id)
+
+      setDrafts(drafts.filter(d => d.id !== draft.id))
+      alert(`Published to WordPress as draft. ID: ${wpPost.id}`)
+    } catch (err) {
+      alert('Failed to publish to WordPress')
+      console.error(err)
+    } finally {
+      setPublishing(null)
+    }
   }
 
   async function deleteDraft(id: string) {
@@ -107,12 +156,15 @@ export function Drafts() {
                 </div>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <button onClick={() => approve(draft.id)} className="flex items-center gap-1 px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200">
-                  <CheckCircle className="w-4 h-4" /> Approve
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={() => publishToWordPress(draft)} disabled={publishing === draft.id} className="flex items-center gap-1 px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                  <Globe className="w-4 h-4" /> {publishing === draft.id ? 'Publishing...' : 'Publish to WP'}
                 </button>
                 <button onClick={() => setShowFeedback(draft.id)} className="flex items-center gap-1 px-4 py-2 bg-amber-100 text-amber-700 rounded hover:bg-amber-200">
                   <MessageSquare className="w-4 h-4" /> Request Changes
+                </button>
+                <button onClick={() => approve(draft.id)} className="flex items-center gap-1 px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200">
+                  <CheckCircle className="w-4 h-4" /> Mark Approved
                 </button>
               </div>
             )}
