@@ -85,6 +85,13 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
       if (storyError) throw storyError
 
       // Create a draft from the press release
+      // Convert plain text to HTML paragraphs
+      const paragraphs = release.body_text
+        .split('\n\n')
+        .filter(p => p.trim())
+        .map(p => `<p>${p.trim().replace(/\n/g, '<br/>')}</p>`)
+        .join('\n')
+      
       const { error: draftError } = await supabase
         .from('editorial_drafts')
         .insert({
@@ -92,7 +99,7 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
           title: release.subject,
           slug: release.subject.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 60),
           excerpt: release.body_text.substring(0, 300),
-          content: `<p>${release.body_text.replace(/\n\n/g, '</p><p>')}</p>`,
+          content: paragraphs,
           featured_image: release.attachments[0]?.cloudinary_url || null,
           status: 'draft',
           created_by: 'dan',
