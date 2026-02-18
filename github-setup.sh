@@ -1,0 +1,22 @@
+#!/bin/bash
+# GitHub Repository Setup Instructions
+
+echo "=========================================="
+echo "Dork Editorial Dashboard - GitHub Setup"
+echo "=========================================="
+echo ""
+echo "To push to GitHub, run these commands:"
+echo ""
+echo "1. Create the repo on GitHub:"
+echo "   - Go to https://github.com/new"
+echo "   - Name: dork-editorial-dashboard"
+echo "   - Make it Public"
+echo "   - Don't initialize with README"
+echo ""
+echo "2. Then run:"
+echo "   cd /root/.openclaw/workspace/dork-dashboard"
+echo "   git remote add origin https://github.com/YOUR_USERNAME/dork-editorial-dashboard.git"
+echo "   git branch -M main"
+echo "   git push -u origin main"
+echo ""
+echo "=========================================="
