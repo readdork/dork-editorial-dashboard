@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, type WordPressArticle } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { telegramApi } from '../lib/telegram'
 import { 
   Loader2, 
@@ -15,7 +15,7 @@ interface BarryImportProps {
 }
 
 export function BarryImport({ userRole: _userRole }: BarryImportProps) {
-  const [articles, setArticles] = useState<WordPressArticle[]>([])
+  const [articles, setArticles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState<string | null>(null)
 
@@ -40,7 +40,7 @@ export function BarryImport({ userRole: _userRole }: BarryImportProps) {
     }
   }
 
-  async function handleImport(article: WordPressArticle) {
+  async function handleImport(article: any) {
     setImporting(article.id)
     try {
       const { error } = await supabase

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, type FeedItem } from '../lib/supabase'
+import { supabase, type Story } from '../lib/supabase'
 import { telegramApi } from '../lib/telegram'
 import { 
   CheckCircle, 
@@ -18,7 +18,7 @@ interface FeedInboxProps {
 }
 
 export function FeedInbox({ userRole }: FeedInboxProps) {
-  const [items, setItems] = useState<FeedItem[]>([])
+  const [items, setItems] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -206,7 +206,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
           </div>
         ) : (
           filteredItems.map((item) => (
-            <FeedItemCard 
+            <StoryCard 
               key={item.id}
               item={item}
               userRole={userRole}
@@ -297,18 +297,18 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   )
 }
 
-function FeedItemCard({ 
+function StoryCard({ 
   item, 
   userRole,
   onApprove,
   onReject
 }: { 
-  item: FeedItem
+  item: Story
   userRole: 'dan' | 'stephen'
   onApprove: (id: string) => void
   onReject: (id: string) => void
 }) {
-  const statusClasses = {
+  const statusClasses: Record<string, string> = {
     pending: 'status-pending',
     approved: 'status-approved',
     rejected: 'status-rejected',
