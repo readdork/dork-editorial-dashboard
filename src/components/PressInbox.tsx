@@ -65,12 +65,13 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
 
   async function handleApprove(release: PressRelease) {
     try {
-      // Create a story from the press release
+      // Create a story from the press release with unique URL
+      const uniqueUrl = `#pr-${release.id}`
       const { data: story, error: storyError } = await supabase
         .from('editorial_stories')
         .insert({
           title: release.subject,
-          url: '#press-release',
+          url: uniqueUrl,
           source: release.sender_name || release.sender_email,
           summary: release.body_text.substring(0, 500),
           status: 'approved',
