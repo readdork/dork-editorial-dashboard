@@ -8,8 +8,7 @@ import {
   ExternalLink,
   Image,
   CheckCircle,
-  XCircle,
-  ArrowRight
+  XCircle
 } from 'lucide-react'
 
 interface PressRelease {
@@ -64,7 +63,7 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
     }
   }
 
-  async function handleImportToStory(release: PressRelease) {
+  async function handleApprove(release: PressRelease) {
     try {
       // Create a story from the press release
       const { data: story, error: storyError } = await supabase
@@ -74,8 +73,8 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
           url: '#press-release',
           source: release.sender_name || release.sender_email,
           summary: release.body_text.substring(0, 500),
-          status: 'pending',
-          priority: true, // PRs are high priority
+          status: 'approved',
+          priority: true,
           artist_names: release.artist_names,
           created_by: 'dan',
         })
@@ -97,9 +96,7 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
           status: 'draft',
           created_by: 'dan',
         })
-        .select()
-        .single()
-      
+
       if (draftError) throw draftError
 
       // Mark press release as imported
@@ -112,8 +109,8 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
         .eq('id', release.id)
 
       await telegramApi.sendNotification(
-        'Press Release Imported',
-        `"${release.subject}" imported from ${release.sender_name}\nAttachments: ${release.attachments.length}\nExternal links: ${Object.values(release.external_links).flat().length}`,
+        'Press Release Approved & Draft Created',
+        `"${release.subject}" from ${release.sender_name}\nDraft created with ${release.attachments.length} images`,
         'high'
       )
 
@@ -122,7 +119,7 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
       ))
       setSelectedRelease(null)
     } catch (err) {
-      alert('Could not import press release.')
+      alert('Could not approve press release.')
     }
   }
 
@@ -187,7 +184,7 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
               key={release.id}
               release={release}
               onSelect={setSelectedRelease}
-              onImport={handleImportToStory}
+              onApprove={handleApprove}
               onReject={handleReject}
             />
           ))
@@ -199,7 +196,7 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
         <PressReleaseDetail
           release={selectedRelease}
           onClose={() => setSelectedRelease(null)}
-          onImport={handleImportToStory}
+          onApprove={handleApprove}
           onReject={handleReject}
         />
       )}
@@ -210,12 +207,12 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
 function PressReleaseCard({ 
   release, 
   onSelect,
-  onImport,
+  onApprove,
   onReject 
 }: { 
   release: PressRelease
   onSelect: (r: PressRelease) => void
-  onImport: (r: PressRelease) => void
+  onApprove: (r: PressRelease) => void
   onReject: (id: string) => void
 }) {
   const statusColors = {
@@ -274,11 +271,11 @@ function PressReleaseCard({
           {release.status === 'pending' && (
             <>
               <button
-                onClick={() => onImport(release)}
+                onClick={() => onApprove(release)}
                 className="p-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 transition-colors"
-                title="Import to Story"
+                title="Approve & Create Draft"
               >
-                <ArrowRight className="w-4 h-4" />
+                <CheckCircle className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onReject(release.id)}
@@ -298,12 +295,12 @@ function PressReleaseCard({
 function PressReleaseDetail({ 
   release, 
   onClose,
-  onImport,
+  onApprove,
   onReject 
 }: { 
   release: PressRelease
   onClose: () => void
-  onImport: (r: PressRelease) => void
+  onApprove: (r: PressRelease) => void
   onReject: (id: string) => void
 }) {
   return (
@@ -395,11 +392,11 @@ function PressReleaseDetail({
                 Reject
               </button>
               <button
-                onClick={() => onImport(release)}
+                onClick={() => onApprove(release)}
                 className="btn-primary"
               >
                 <CheckCircle className="w-4 h-4" />
-                Import to Story
+                Approve & Create Draft
               </button>
             </div>
           )}
