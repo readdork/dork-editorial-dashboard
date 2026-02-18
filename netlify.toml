@@ -13,6 +13,11 @@
   VITE_CLOUDINARY_CLOUD_NAME = "dqsjmrzp1"
   VITE_TELEGRAM_BOT_TOKEN = "8334499958:AAF6FCeRsQfwVNhSqLrD_RBDjouOxv7FC9Y"
   VITE_TELEGRAM_CHAT_ID = "8397675850"
+  # Function env vars (also needed for build)
+  WP_BASE = "https://readdork.com"
+  WP_USER = "stephen@welcometothebunker.com"
+  WP_APP_PASSWORD = "bjqI TK2J zGtW EV82 2Vn0 1HrG"
+  GATEWAY_SECRET = "dork-wp-gateway-2026-secure-key-x7k9m2p4q8r5t1"
 
 # Function environment variables
 [context.production.environment]
