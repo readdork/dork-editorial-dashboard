@@ -13,9 +13,9 @@ interface ExtendedDraft extends Draft {
 // WordPress section taxonomy term IDs
 function getSectionTermId(section: string): number {
   const sections: Record<string, number> = {
-    'Upset': 6,
-    'Hype': 7,
-    'Festivals': 8,
+    'Upset': 5478,
+    'Hype': 5479,
+    'Festivals': 5476,
   }
   return sections[section] || 0
 }
