@@ -1,20 +1,13 @@
-import { requireEnv, verifyHmac, json, text, wpFetchWithRetry } from "./_util.js";
+import { requireEnv, json, text, wpFetchWithRetry } from "./_util.js";
 
 export async function handler(event) {
   try {
-    requireEnv(["GATEWAY_SECRET", "WP_BASE", "WP_USER", "WP_APP_PASSWORD"]);
-    if (event.httpMethod !== "POST" && event.httpMethod !== "GET") {
+    requireEnv(["WP_BASE", "WP_USER", "WP_APP_PASSWORD"]);
+    
+    if (event.httpMethod !== "GET") {
       return text(405, "Method Not Allowed");
     }
 
-    const rawBody = event.body || "";
-    const v = verifyHmac(event, rawBody);
-    if (!v.ok) return text(401, v.why);
-
-    // Support querying taxonomies and terms
-    // GET /wp-taxonomy?taxonomy=sections - list all terms in a taxonomy
-    // GET /wp-taxonomy?taxonomy=categories - list all categories
-    
     const url = new URL(event.rawUrl || `https://localhost${event.path}`, "https://localhost");
     const taxonomy = url.searchParams.get("taxonomy") || "sections";
     
