@@ -87,7 +87,8 @@ export function Drafts() {
         .replace(/\n/g, '<br>\n')
       
       const payload = {
-        data: {
+        action: 'create',
+        post: {
           title: draft.title,
           content: wpContent,
           excerpt: draft.excerpt,
@@ -133,11 +134,11 @@ export function Drafts() {
 
       const result = await response.json()
       
-      if (!result.ok) {
+      if (response.status !== 200 && response.status !== 201) {
         throw new Error(result.error || 'WordPress publish failed')
       }
       
-      const wpPost = result.body
+      const wpPost = result
       
       await supabase.from('editorial_drafts').update({
         status: 'published',
