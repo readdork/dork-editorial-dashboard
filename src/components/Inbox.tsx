@@ -1,23 +1,26 @@
 import { useState, useEffect } from 'react'
 import { supabase, type Story } from '../lib/supabase'
-import { CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 
 export function Inbox() {
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
   useEffect(() => {
     fetchStories()
   }, [])
 
   async function fetchStories() {
+    setLoading(true)
     const { data } = await supabase
       .from('editorial_stories')
       .select('*')
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
     setStories(data || [])
+    setLastRefresh(new Date())
     setLoading(false)
   }
 
@@ -35,7 +38,15 @@ export function Inbox() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Inbox ({stories.length})</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Inbox ({stories.length})</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">Updated: {lastRefresh.toLocaleTimeString()}</span>
+          <button onClick={fetchStories} className="p-2 hover:bg-gray-100 rounded">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
       {stories.length === 0 ? (
         <p className="text-gray-500">No pending items</p>
       ) : (

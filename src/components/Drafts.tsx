@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, type Draft } from '../lib/supabase'
-import { CheckCircle, MessageSquare, Loader2, ChevronDown, ChevronUp, Trash2, Globe } from 'lucide-react'
+import { CheckCircle, MessageSquare, Loader2, ChevronDown, ChevronUp, Trash2, Globe, RefreshCw } from 'lucide-react'
 
 export function Drafts() {
   const [drafts, setDrafts] = useState<Draft[]>([])
@@ -9,18 +9,21 @@ export function Drafts() {
   const [showFeedback, setShowFeedback] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [publishing, setPublishing] = useState<string | null>(null)
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
   useEffect(() => {
     fetchDrafts()
   }, [])
 
   async function fetchDrafts() {
+    setLoading(true)
     const { data } = await supabase
       .from('editorial_drafts')
       .select('*')
       .in('status', ['draft', 'in_review'])
       .order('created_at', { ascending: false })
     setDrafts(data || [])
+    setLastRefresh(new Date())
     setLoading(false)
   }
 
@@ -98,7 +101,16 @@ export function Drafts() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Drafts ({drafts.length})</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Drafts ({drafts.length})</h1>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">Updated: {lastRefresh.toLocaleTimeString()}</span>
+          <button onClick={fetchDrafts} className="p-2 hover:bg-gray-100 rounded">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
       {drafts.length === 0 ? (
         <p className="text-gray-500">No drafts waiting</p>
       ) : (
