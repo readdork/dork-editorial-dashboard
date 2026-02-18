@@ -79,7 +79,7 @@ export function Drafts() {
     setPublishing(id)
     try {
       const gatewayUrl = '/.netlify/functions/wp-post'
-      const gatewaySecret = 'dork-gateway-secret-2026'
+      const gatewaySecret = 'dork-wp-gateway-2026-secure-key-x7k9m2p4q8r5t1'
       
       // Convert markdown bold to HTML for WordPress
       const wpContent = draft.content
