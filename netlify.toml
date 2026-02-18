@@ -4,16 +4,14 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  VITE_SUPABASE_URL = "https://olptdzrcevxexfpcyugt.supabase.co"
-  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9scHRkenJjZXZ4ZXhmcGN5dWd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5ODEyNTEsImV4cCI6MjA3NjU1NzI1MX0.r0MzGNe3iVVfad-WSVx8mx0hynql79mVn9UgDKPHQas"
+  VITE_SUPABASE_URL = "https://phztsarcdhownmmsqrih.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBoenRzYXJjZGhvd25tbXNxcmloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzOTM0MDUsImV4cCI6MjA4Njk2OTQwNX0.H1gMiwCp7l6z4ruod10TSbrJAQtizWQ-c13TdcSpf1g"
   VITE_WORDPRESS_URL = "https://readdork.com"
   VITE_WORDPRESS_USER = "stephen@welcometothebunker.com"
   VITE_WORDPRESS_APP_PASSWORD = "bjqI TK2J zGtW EV82 2Vn0 1HrG"
   VITE_CLOUDINARY_CLOUD_NAME = "dqsjmrzp1"
   VITE_TELEGRAM_BOT_TOKEN = "8334499958:AAF6FCeRsQfwVNhSqLrD_RBDjouOxv7FC9Y"
   VITE_TELEGRAM_CHAT_ID = "8397675850"
-  SUPABASE_URL = "https://olptdzrcevxexfpcyugt.supabase.co"
-  SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9scHRkenJjZXZ4ZXhmcGN5dWd0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDk4MTI1MSwiZXhwIjoyMDc2NTU3MjUxfQ.r0MzGNe3iVVfad-WSVx8mx0hynql79mVn9UgDKPHQas"
 
 [[redirects]]
   from = "/*"
