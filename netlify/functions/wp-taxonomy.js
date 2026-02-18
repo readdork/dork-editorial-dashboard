@@ -1,12 +1,15 @@
-import { requireEnv, json, text, wpFetchWithRetry } from "./_util.js";
+import { requireEnv, verifyHmac, json, text, wpFetchWithRetry } from "./_util.js";
 
 export async function handler(event) {
   try {
-    requireEnv(["WP_BASE", "WP_USER", "WP_APP_PASSWORD"]);
-    
-    if (event.httpMethod !== "GET") {
+    requireEnv(["GATEWAY_SECRET", "WP_BASE", "WP_USER", "WP_APP_PASSWORD"]);
+    if (event.httpMethod !== "POST" && event.httpMethod !== "GET") {
       return text(405, "Method Not Allowed");
     }
+
+    const rawBody = event.body || "";
+    const v = verifyHmac(event, rawBody);
+    if (!v.ok) return text(401, v.why);
 
     const url = new URL(event.rawUrl || `https://localhost${event.path}`, "https://localhost");
     const taxonomy = url.searchParams.get("taxonomy") || "sections";

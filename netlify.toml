@@ -21,7 +21,7 @@
   WP_BASE = "https://readdork.com"
   WP_USER = "stephen@welcometothebunker.com"
   WP_APP_PASSWORD = "bjqI TK2J zGtW EV82 2Vn0 1HrG"
-  GATEWAY_SECRET = "dork-gateway-secret-2026"
+  GATEWAY_SECRET = "dork-wp-gateway-2026-secure-key-x7k9m2p4q8r5t1"
 
 [[redirects]]
   from = "/*"
