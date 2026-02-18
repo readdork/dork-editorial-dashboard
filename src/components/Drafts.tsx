@@ -182,6 +182,42 @@ export function Drafts() {
                     rows={15}
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Section</label>
+                  <select
+                    value={editForm.section || ''}
+                    onChange={(e) => setEditForm({...editForm, section: e.target.value})}
+                    className="w-full border p-2 rounded"
+                  >
+                    <option value="">None</option>
+                    <option value="Upset">Upset</option>
+                    <option value="Hype">Hype</option>
+                    <option value="Festivals">Festivals</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Artist Names (comma separated)</label>
+                  <input
+                    type="text"
+                    value={(editForm.artist_names || []).join(', ')}
+                    onChange={(e) => setEditForm({...editForm, artist_names: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})}
+                    className="w-full border p-2 rounded"
+                    placeholder="Artist 1, Artist 2, Artist 3"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Featured Image URL</label>
+                  <input
+                    type="text"
+                    value={editForm.featured_image || ''}
+                    onChange={(e) => setEditForm({...editForm, featured_image: e.target.value})}
+                    className="w-full border p-2 rounded font-mono text-sm"
+                    placeholder="https://..."
+                  />
+                </div>
                 
                 <div className="flex gap-2">
                   <button 
@@ -229,6 +265,20 @@ export function Drafts() {
                 {draft.excerpt && (
                   <div className="bg-gray-50 p-2 rounded mb-3 text-sm text-gray-600">
                     <strong>Excerpt:</strong> {draft.excerpt}
+                  </div>
+                )}
+
+                {(draft.artist_names || draft.section || draft.featured_image) && (
+                  <div className="bg-blue-50 p-2 rounded mb-3 text-sm">
+                    {draft.artist_names && draft.artist_names.length > 0 && (
+                      <div><strong>Artists:</strong> {draft.artist_names.join(', ')}</div>
+                    )}
+                    {draft.section && (
+                      <div><strong>Section:</strong> {draft.section}</div>
+                    )}
+                    {draft.featured_image && (
+                      <div><strong>Image:</strong> {draft.featured_image.substring(0, 50)}...</div>
+                    )}
                   </div>
                 )}
                 
