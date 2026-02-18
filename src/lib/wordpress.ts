@@ -1,10 +1,21 @@
-import axios from 'axios'
+// WordPress API service - matching barrynew2 approach
 
 const WP_URL = import.meta.env.VITE_WORDPRESS_URL || ''
 const WP_USER = import.meta.env.VITE_WORDPRESS_USER || ''
 const WP_APP_PASSWORD = import.meta.env.VITE_WORDPRESS_APP_PASSWORD || ''
 
-const authHeader = () => {
+// Ensure URL ends with /wp-json
+const getApiUrl = (url: string): string => {
+  const trimmed = url.trim()
+  if (!trimmed.endsWith('/wp-json')) {
+    return trimmed + '/wp-json'
+  }
+  return trimmed
+}
+
+const API_URL = getApiUrl(WP_URL)
+
+const getAuthHeader = (): string => {
   const token = btoa(`${WP_USER}:${WP_APP_PASSWORD}`)
   return `Basic ${token}`
 }
@@ -27,17 +38,24 @@ export type WordPressPost = {
 
 export const wordpressApi = {
   async getPosts(status?: string, perPage = 20): Promise<WordPressPost[]> {
-    const params: Record<string, string | number> = {
-      per_page: perPage,
-      _embed: 'wp:featuredmedia',
-    }
-    if (status) params.status = status
+    const params = new URLSearchParams()
+    params.append('per_page', perPage.toString())
+    params.append('_embed', 'wp:featuredmedia')
+    if (status) params.append('status', status)
     
-    const response = await axios.get(`${WP_URL}/wp-json/wp/v2/posts`, {
-      headers: { Authorization: authHeader() },
-      params,
+    const response = await fetch(`${API_URL}/wp/v2/posts?${params.toString()}`, {
+      headers: {
+        'Authorization': getAuthHeader(),
+        'Content-Type': 'application/json'
+      }
     })
-    return response.data
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }))
+      throw new Error(error.message || `HTTP ${response.status}`)
+    }
+    
+    return response.json()
   },
 
   async createPost(post: {
@@ -47,36 +65,64 @@ export const wordpressApi = {
     slug: string
     status: 'draft' | 'publish'
     featured_media?: number
+    author?: number
   }): Promise<WordPressPost> {
-    const response = await axios.post(`${WP_URL}/wp-json/wp/v2/posts`, post, {
-      headers: { 
-        Authorization: authHeader(),
+    const response = await fetch(`${API_URL}/wp/v2/posts`, {
+      method: 'POST',
+      headers: {
+        'Authorization': getAuthHeader(),
         'Content-Type': 'application/json'
       },
+      body: JSON.stringify({
+        ...post,
+        categories: [1] // News category
+      })
     })
-    return response.data
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }))
+      throw new Error(error.message || `HTTP ${response.status}`)
+    }
+    
+    return response.json()
   },
 
   async updatePost(id: number, post: Partial<WordPressPost>): Promise<WordPressPost> {
-    const response = await axios.post(`${WP_URL}/wp-json/wp/v2/posts/${id}`, post, {
-      headers: { 
-        Authorization: authHeader(),
+    const response = await fetch(`${API_URL}/wp/v2/posts/${id}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': getAuthHeader(),
         'Content-Type': 'application/json'
       },
+      body: JSON.stringify(post)
     })
-    return response.data
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }))
+      throw new Error(error.message || `HTTP ${response.status}`)
+    }
+    
+    return response.json()
   },
 
   async uploadImage(file: File): Promise<number> {
     const formData = new FormData()
     formData.append('file', file)
     
-    const response = await axios.post(`${WP_URL}/wp-json/wp/v2/media`, formData, {
-      headers: { 
-        Authorization: authHeader(),
-        'Content-Disposition': `attachment; filename="${file.name}"`,
+    const response = await fetch(`${API_URL}/wp/v2/media`, {
+      method: 'POST',
+      headers: {
+        'Authorization': getAuthHeader()
       },
+      body: formData
     })
-    return response.data.id
-  },
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'Unknown error' }))
+      throw new Error(error.message || `HTTP ${response.status}`)
+    }
+    
+    const data = await response.json()
+    return data.id
+  }
 }
