@@ -74,6 +74,11 @@ export function Drafts() {
       
       const auth = btoa(`${username}:${password}`)
       
+      // Convert markdown bold to HTML for WordPress
+      const wpContent = draft.content
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>\n')
+      
       const response = await fetch(`${wpUrl}/wp-json/wp/v2/posts`, {
         method: 'POST',
         headers: {
@@ -82,7 +87,7 @@ export function Drafts() {
         },
         body: JSON.stringify({
           title: draft.title,
-          content: draft.content,
+          content: wpContent,
           excerpt: draft.excerpt,
           slug: draft.slug,
           status: 'draft',
