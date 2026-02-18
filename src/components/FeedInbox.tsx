@@ -55,6 +55,28 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
 
   async function handleApprove(id: string) {
     try {
+      // Get the story details
+      const story = items.find(i => i.id === id)
+      if (!story) return
+
+      // Generate article from feed item
+      const response = await fetch('/.netlify/functions/generate-feed-article', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: story.title,
+          summary: story.summary,
+          source: story.source,
+          url: story.url,
+          artist_names: story.artist_names,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate article')
+      }
+
+      const article = await response.json()
+
       // Update story status
       const { error: updateError } = await supabase
         .from('editorial_stories')
@@ -63,42 +85,34 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
 
       if (updateError) throw updateError
 
-      // Get the story details
-      const story = items.find(i => i.id === id)
-      if (story) {
-        // Create a draft
-        const slug = story.title.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '')
-          .substring(0, 50)
+      // Create a draft with the generated article
+      const { error: draftError } = await supabase
+        .from('editorial_drafts')
+        .insert([{
+          story_id: id,
+          title: article.title,
+          slug: article.slug,
+          excerpt: article.excerpt,
+          content: article.content,
+          featured_image: story.image_url,
+          status: 'draft',
+          created_by: 'dan'
+        }])
 
-        const { error: draftError } = await supabase
-          .from('editorial_drafts')
-          .insert([{
-            story_id: id,
-            title: story.title,
-            slug: slug,
-            excerpt: story.summary || `${story.title} - latest news from ${story.source}`,
-            content: `<p>${story.summary || 'Write article content here...'}</p>`,
-            featured_image: story.image_url,
-            status: 'draft',
-            created_by: 'dan'
-          }])
+      if (draftError) throw draftError
 
-        if (draftError) throw draftError
-
-        // Notify via Telegram
-        await telegramApi.sendNotification(
-          'Story Approved & Draft Created',
-          `Stephen approved "${story.title}"\nDan has created a draft.`,
-          'high'
-        )
-      }
+      // Notify via Telegram
+      await telegramApi.sendNotification(
+        'Story Approved & Article Drafted',
+        `Stephen approved "${story.title}"\nDan has written a draft article. Review and edit before publishing.`,
+        'high'
+      )
 
       setItems(items.map(item =>
         item.id === id ? { ...item, status: 'approved' } : item
       ))
     } catch (err) {
+      console.error(err)
       alert('Could not approve item. Try again.')
     }
   }
