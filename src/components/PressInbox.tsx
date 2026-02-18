@@ -8,7 +8,9 @@ import {
   ExternalLink,
   Image,
   CheckCircle,
-  XCircle
+  XCircle,
+  Download,
+  Film
 } from 'lucide-react'
 
 interface PressRelease {
@@ -65,15 +67,32 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
 
   async function handleApprove(release: PressRelease) {
     try {
+      // Generate article from PR content
+      const response = await fetch('/.netlify/functions/generate-article', {
+        method: 'POST',
+        body: JSON.stringify({
+          subject: release.subject,
+          body: release.body_text,
+          artist_names: release.artist_names,
+          sender: release.sender_name,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate article')
+      }
+
+      const article = await response.json()
+
       // Create a story from the press release with unique URL
       const uniqueUrl = `#pr-${release.id}`
       const { data: story, error: storyError } = await supabase
         .from('editorial_stories')
         .insert({
-          title: release.subject,
+          title: article.title,
           url: uniqueUrl,
           source: release.sender_name || release.sender_email,
-          summary: release.body_text.substring(0, 500),
+          summary: article.excerpt,
           status: 'approved',
           priority: true,
           artist_names: release.artist_names,
@@ -84,22 +103,15 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
       
       if (storyError) throw storyError
 
-      // Create a draft from the press release
-      // Convert plain text to HTML paragraphs
-      const paragraphs = release.body_text
-        .split('\n\n')
-        .filter(p => p.trim())
-        .map(p => `<p>${p.trim().replace(/\n/g, '<br/>')}</p>`)
-        .join('\n')
-      
+      // Create a draft with the generated article
       const { error: draftError } = await supabase
         .from('editorial_drafts')
         .insert({
           story_id: story.id,
-          title: release.subject,
-          slug: release.subject.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 60),
-          excerpt: release.body_text.substring(0, 300),
-          content: paragraphs,
+          title: article.title,
+          slug: article.slug,
+          excerpt: article.excerpt,
+          content: article.content,
           featured_image: release.attachments[0]?.cloudinary_url || null,
           status: 'draft',
           created_by: 'dan',
@@ -117,8 +129,8 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
         .eq('id', release.id)
 
       await telegramApi.sendNotification(
-        'Press Release Approved & Draft Created',
-        `"${release.subject}" from ${release.sender_name}\nDraft created with ${release.attachments.length} images`,
+        'Press Release Approved & Article Drafted',
+        `"${article.title}" from ${release.sender_name}\nDraft created with Dork-style article. Review and edit before publishing.`,
         'high'
       )
 
@@ -127,6 +139,7 @@ export function PressInbox({ userRole: _userRole }: PressInboxProps) {
       ))
       setSelectedRelease(null)
     } catch (err) {
+      console.error(err)
       alert('Could not approve press release.')
     }
   }
@@ -358,33 +371,73 @@ function PressReleaseDetail({
             </div>
           )}
 
-          {/* External Links */}
+          {/* External Links - Enhanced */}
           {Object.entries(release.external_links).some(([_, links]) => links?.length > 0) && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium mb-2">External Links</h3>
-              <div className="space-y-1">
-                {Object.entries(release.external_links).map(([type, links]) => 
-                  links?.map((link: string, i: number) => (
-                    <a
-                      key={`${type}-${i}`}
-                      href={link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      {type}: {link.substring(0, 50)}...
-                    </a>
-                  ))
-                )}
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                <ExternalLink className="w-4 h-4" />
+                Media Links (Download for Featured Image)
+              </h3>
+              <div className="space-y-2">
+                {release.external_links.dropbox?.map((link: string, i: number) => (
+                  <a
+                    key={`dropbox-${i}`}
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-400 hover:underline font-medium"
+                  >
+                    <Download className="w-4 h-4" />
+                    Dropbox: Press shots / assets
+                  </a>
+                ))}
+                {release.external_links.google_drive?.map((link: string, i: number) => (
+                  <a
+                    key={`drive-${i}`}
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Google Drive
+                  </a>
+                ))}
+                {release.external_links.wetransfer?.map((link: string, i: number) => (
+                  <a
+                    key={`wetransfer-${i}`}
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    WeTransfer
+                  </a>
+                ))}
+                {release.external_links.youtube?.map((link: string, i: number) => (
+                  <a
+                    key={`youtube-${i}`}
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-red-600 hover:underline"
+                  >
+                    <Film className="w-3 h-3" />
+                    YouTube
+                  </a>
+                ))}
               </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Download images from these links, then upload to Cloudinary for the featured image
+              </p>
             </div>
           )}
 
           {/* Body */}
           <div className="prose dark:prose-invert max-w-none mb-6">
             <h3 className="text-sm font-medium mb-2">Content</h3>
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-sm whitespace-pre-wrap">
+            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
               {release.body_text}
             </div>
           </div>
