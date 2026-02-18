@@ -10,6 +10,16 @@ interface ExtendedDraft extends Draft {
   wordpress_status?: string
 }
 
+// WordPress category IDs mapping
+function getCategoryId(section: string): number {
+  const categories: Record<string, number> = {
+    'Upset': 6,
+    'Hype': 7,
+    'Festivals': 8,
+  }
+  return categories[section] || 1 // Default to uncategorized
+}
+
 export function Drafts() {
   const [drafts, setDrafts] = useState<ExtendedDraft[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,7 +101,9 @@ export function Drafts() {
           excerpt: draft.excerpt,
           slug: draft.slug,
           status: 'draft',
-          author: 8
+          author: 8,
+          categories: draft.section ? [getCategoryId(draft.section)] : [],
+          tags: draft.artist_names || []
         })
       })
 
