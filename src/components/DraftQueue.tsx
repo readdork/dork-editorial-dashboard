@@ -3,18 +3,19 @@ import { supabase, type Draft } from '../lib/supabase'
 import { wordpressApi } from '../lib/wordpress'
 import { cloudinaryApi } from '../lib/cloudinary'
 import { telegramApi } from '../lib/telegram'
+import { RichTextEditor } from './RichTextEditor'
 import { 
   Plus, 
   Edit2, 
-  Upload, 
-  CheckCircle, 
   Loader2, 
   Image as ImageIcon,
-  Eye,
   Send,
   FileText,
   X,
-  Save
+  Save,
+  RefreshCw,
+  Globe,
+  Database
 } from 'lucide-react'
 
 interface DraftQueueProps {
@@ -29,6 +30,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [activeTab, setActiveTab] = useState<'draft' | 'in_review' | 'approved'>('draft')
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   
   const [formData, setFormData] = useState({
     title: '',
@@ -36,6 +38,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
     excerpt: '',
     content: '',
     featured_image: '',
+    section: 'None' as 'Upset' | 'Hype' | 'Festivals' | 'None',
   })
   const [uploadingImage, setUploadingImage] = useState(false)
 
@@ -45,6 +48,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
 
   async function fetchDrafts() {
     try {
+      setLoading(true)
       const { data, error } = await supabase
         .from('editorial_drafts')
         .select('*')
@@ -52,6 +56,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       
       if (error) throw error
       setDrafts(data || [])
+      setLastRefresh(new Date())
     } catch (err) {
       console.error('Failed to load drafts:', err)
     } finally {
@@ -67,6 +72,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       excerpt: draft.excerpt,
       content: draft.content,
       featured_image: draft.featured_image || '',
+      section: (draft as any).section || 'None',
     })
     setShowEditor(true)
   }
@@ -79,6 +85,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       excerpt: '',
       content: '',
       featured_image: '',
+      section: 'None',
     })
     setShowEditor(true)
   }
@@ -89,6 +96,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       const slug = formData.slug || formData.title.toLowerCase()
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]/g, '')
+        .substring(0, 60)
 
       const draftData = {
         title: formData.title,
@@ -98,6 +106,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
         featured_image: formData.featured_image || undefined,
         status: asStatus,
         updated_at: new Date().toISOString(),
+        section: formData.section,
       }
 
       if (editingDraft) {
@@ -112,20 +121,12 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       } else {
         const { data, error } = await supabase
           .from('editorial_drafts')
-          .insert([{ ...draftData, created_by: userRole }])
+          .insert([{ ...draftData, created_by: userRole, created_at: new Date().toISOString() }])
           .select()
           .single()
         
         if (error) throw error
         setDrafts([data, ...drafts])
-      }
-
-      if (asStatus === 'in_review') {
-        await telegramApi.sendNotification(
-          'Draft ready for review',
-          `"${formData.title}" is waiting for your approval`,
-          'medium'
-        )
       }
 
       setShowEditor(false)
@@ -136,23 +137,38 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
     }
   }
 
-  async function handlePublishToWordPress() {
+  // Dan submits for review
+  async function handleSubmitForReview() {
+    await handleSave('in_review')
+    
+    await telegramApi.sendNotification(
+      'Draft Ready for Review',
+      `"${formData.title}" is ready for Stephen's approval`,
+      'medium'
+    )
+  }
+
+  // Stephen approves and publishes to WordPress
+  async function handleApproveAndPublish() {
     if (!editingDraft) return
     
     setPublishing(true)
     try {
+      // First save as in_review (not approved yet, that happens after WP publish)
+      await handleSave('in_review')
+      
+      // Then publish to WordPress
       const wpPost = await wordpressApi.createPost({
         title: formData.title,
         content: formData.content,
         excerpt: formData.excerpt,
         slug: formData.slug,
-        status: 'draft',
+        status: 'draft', // Always publish as draft first
       })
 
       const { error } = await supabase
         .from('editorial_drafts')
         .update({
-          status: 'approved',
           wordpress_post_id: wpPost.id,
           wordpress_status: 'draft',
           updated_at: new Date().toISOString(),
@@ -163,7 +179,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
 
       await telegramApi.sendNotification(
         'Published to WordPress',
-        `"${formData.title}" is now in WordPress as a draft`,
+        `"${formData.title}" is now in WordPress as a draft (ID: ${wpPost.id})`,
         'high'
       )
 
@@ -180,6 +196,28 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
     }
   }
 
+  // Mark as imported to Barry
+  async function handleMarkBarryImported(draftId: string) {
+    try {
+      const { error } = await supabase
+        .from('editorial_drafts')
+        .update({ barry_imported: true, updated_at: new Date().toISOString() })
+        .eq('id', draftId)
+      
+      if (error) throw error
+      
+      setDrafts(drafts.map(d => d.id === draftId ? { ...d, barry_imported: true } : d))
+      
+      await telegramApi.sendNotification(
+        'Barry Import Complete',
+        'Article has been imported to Barry',
+        'low'
+      )
+    } catch (err) {
+      alert('Could not update import status.')
+    }
+  }
+
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -192,21 +230,6 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       alert('Could not upload image. Try a smaller file.')
     } finally {
       setUploadingImage(false)
-    }
-  }
-
-  async function handleApprove(draftId: string) {
-    try {
-      const { error } = await supabase
-        .from('editorial_drafts')
-        .update({ status: 'approved', updated_at: new Date().toISOString() })
-        .eq('id', draftId)
-      
-      if (error) throw error
-      
-      setDrafts(drafts.map(d => d.id === draftId ? { ...d, status: 'approved' } : d))
-    } catch (err) {
-      alert('Could not approve draft. Try again.')
     }
   }
 
@@ -233,14 +256,32 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
     <div className="space-y-6 animate-slide-up">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Draft Queue</h1>
-        <button
-          onClick={handleNew}
-          className="btn-primary self-start"
-        >
-          <Plus className="w-4 h-4" />
-          New draft
-        </button>
+        <div>
+          <h1 className="text-2xl font-bold">Draft Queue</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {counts.draft} draft, {counts.in_review} in review, {counts.approved} approved
+            <span className="ml-2 text-xs">(Refreshed: {lastRefresh.toLocaleTimeString()})</span>
+          </p>
+        </div>
+        
+        <div className="flex gap-2 self-start">
+          <button
+            onClick={fetchDrafts}
+            disabled={loading}
+            className="btn-secondary"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={handleNew}
+            className="btn-primary"
+          >
+            <Plus className="w-4 h-4" />
+            New draft
+          </button>
+        </div>
       </div>
 
       {!showEditor ? (
@@ -276,19 +317,20 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
                 <DraftCard 
                   key={draft.id}
                   draft={draft}
-                  onEdit={handleEdit}
                   userRole={userRole}
-                  onApprove={handleApprove}
+                  onEdit={handleEdit}
+                  onMarkBarryImported={handleMarkBarryImported}
                 />
               ))
             )}
           </div>
         </>
       ) : (
-        <div className="editor-card animate-in">
+        /* Editor */
+        <div className="editor-card">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold">
-              {editingDraft ? 'Edit draft' : 'New draft'}
+              {editingDraft ? 'Edit Draft' : 'New Draft'}
             </h2>
             <button
               onClick={() => setShowEditor(false)}
@@ -297,120 +339,134 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
               <X className="w-5 h-5" />
             </button>
           </div>
-          
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1.5">Title</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="editor-input"
-                  placeholder="Article title"
-                />
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Slug</label>
-                <input
-                  type="text"
-                  value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                  className="editor-input"
-                  placeholder="auto-generated-from-title"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Featured Image</label>
-                <div className="flex items-center gap-3">
-                  {formData.featured_image ? (
-                    <img 
-                      src={formData.featured_image} 
-                      alt="Featured" 
-                      className="h-12 w-12 object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="h-12 w-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center"
-                    >
-                      <ImageIcon className="w-5 h-5 text-gray-400" />
-                    </div>
-                  )}
-                  
-                  <label className="btn-secondary cursor-pointer"
-                  >
-                    <Upload className="w-4 h-4" />
-                    {uploadingImage ? 'Uploading...' : 'Upload image'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      disabled={uploadingImage}
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-
+          <div className="space-y-4">
+            {/* Title */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">Excerpt</label>
-              <textarea
-                value={formData.excerpt}
-                onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-                rows={2}
+              <label className="block text-sm font-medium mb-1">Title</label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="editor-input"
-                placeholder="Brief summary for social media and SEO"
+                placeholder="Article title"
               />
             </div>
 
+            {/* Slug */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">Content</label>
+              <label className="block text-sm font-medium mb-1">Slug (URL)</label>
+              <input
+                type="text"
+                value={formData.slug}
+                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                className="editor-input"
+                placeholder="auto-generated-from-title"
+              />
+            </div>
+
+            {/* Section */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Section</label>
+              <select
+                value={formData.section}
+                onChange={(e) => setFormData({ ...formData, section: e.target.value as any })}
+                className="editor-input"
+              >
+                <option value="None">None</option>
+                <option value="Upset">Upset (Rock/Punk/Metal)</option>
+                <option value="Hype">Hype (New Artists)</option>
+                <option value="Festivals">Festivals</option>
+              </select>
+            </div>
+
+            {/* Excerpt */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Excerpt</label>
               <textarea
+                value={formData.excerpt}
+                onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+                className="editor-input"
+                rows={2}
+                placeholder="Short summary for social media and listings"
+              />
+            </div>
+
+            {/* Featured Image */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Featured Image</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.featured_image}
+                  onChange={(e) => setFormData({ ...formData, featured_image: e.target.value })}
+                  className="editor-input flex-1"
+                  placeholder="https://..."
+                />
+                <label className="btn-secondary cursor-pointer">
+                  <ImageIcon className="w-4 h-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              {uploadingImage && (
+                <p className="text-sm text-gray-500 mt-1">Uploading...</p>
+              )}
+              {formData.featured_image && (
+                <img
+                  src={formData.featured_image}
+                  alt="Featured"
+                  className="mt-2 w-full max-w-md h-40 object-cover rounded-lg"
+                />
+              )}
+            </div>
+
+            {/* Content - Rich Text Editor */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Content</label>
+              <RichTextEditor
                 value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                rows={16}
-                className="editor-textarea"
+                onChange={(value) => setFormData({ ...formData, content: value })}
                 placeholder="Write your article here..."
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex gap-2">
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2 pt-4 border-t">
+              <button
+                onClick={() => handleSave('draft')}
+                disabled={saving}
+                className="btn-secondary"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Saving...' : 'Save Draft'}
+              </button>
+              
+              {userRole === 'dan' && (
                 <button
-                  onClick={() => handleSave('draft')}
+                  onClick={handleSubmitForReview}
                   disabled={saving}
-                  className="btn-secondary"
+                  className="btn-primary bg-amber-600 hover:bg-amber-700"
                 >
-                  <Save className="w-4 h-4" />
-                  {saving ? 'Saving...' : 'Save draft'}
+                  <Send className="w-4 h-4" />
+                  Submit for Review
                 </button>
-              </div>
-
-              <div className="flex gap-2">
-                {userRole === 'dan' && editingDraft?.status !== 'approved' && (
-                  <button
-                    onClick={() => handleSave('in_review')}
-                    disabled={saving}
-                    className="btn-secondary"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Submit for review
-                  </button>
-                )}
-                
-                {userRole === 'stephen' && editingDraft && (
-                  <button
-                    onClick={handlePublishToWordPress}
-                    disabled={publishing}
-                    className="btn-primary"
-                  >
-                    <Send className="w-4 h-4" />
-                    {publishing ? 'Publishing...' : 'Push to WordPress'}
-                  </button>
-                )}
-              </div>
+              )}
+              
+              {userRole === 'stephen' && editingDraft?.status === 'in_review' && (
+                <button
+                  onClick={handleApproveAndPublish}
+                  disabled={publishing}
+                  className="btn-primary"
+                >
+                  <Globe className="w-4 h-4" />
+                  {publishing ? 'Publishing...' : 'Approve & Publish to WP'}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -419,38 +475,56 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
   )
 }
 
+// Draft Card Component
 function DraftCard({ 
   draft, 
-  onEdit, 
-  userRole,
-  onApprove 
+  onEdit,
+  onMarkBarryImported 
 }: { 
   draft: Draft
-  onEdit: (draft: Draft) => void
   userRole: 'dan' | 'stephen'
-  onApprove?: (id: string) => void
+  onEdit: (draft: Draft) => void
+  onMarkBarryImported: (id: string) => void
 }) {
-  const statusConfig = {
-    draft: { label: 'Draft', class: 'status-draft' },
-    in_review: { label: 'In Review', class: 'status-review' },
-    approved: { label: 'Approved', class: 'status-approved' },
-    published: { label: 'Published', class: 'status-approved' },
+  const statusColors = {
+    draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    in_review: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+    approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    published: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   }
 
-  const status = statusConfig[draft.status]
-
   return (
-    <div className="editor-card group"
-    >
+    <div className="editor-card hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-lg truncate">{draft.title}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{draft.excerpt}</p>
-          <div className="flex items-center gap-3 mt-3">
-            <span className={status.class}>{status.label}</span>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-medium text-lg leading-tight">{draft.title}</h3>
+            <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[draft.status]}`}>
+              {draft.status.replace('_', ' ')}
+            </span>
+            {(draft as any).section && (draft as any).section !== 'None' && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-dork-100 text-dork-700 dark:bg-dork-900/30 dark:text-dork-300">
+                {(draft as any).section}
+              </span>
+            )}
+          </div>
+          
+          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
+            {draft.excerpt}
+          </p>
+          
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            <span>Slug: {draft.slug}</span>
             {draft.wordpress_post_id && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="flex items-center gap-1 text-green-600">
+                <Globe className="w-3 h-3" />
                 WP #{draft.wordpress_post_id}
+              </span>
+            )}
+            {draft.barry_imported && (
+              <span className="flex items-center gap-1 text-blue-600">
+                <Database className="w-3 h-3" />
+                Barry
               </span>
             )}
           </div>
@@ -465,13 +539,13 @@ function DraftCard({
             <Edit2 className="w-4 h-4" />
           </button>
           
-          {userRole === 'stephen' && draft.status === 'in_review' && onApprove && (
+          {draft.status === 'approved' && !draft.barry_imported && (
             <button
-              onClick={() => onApprove(draft.id)}
-              className="p-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 transition-colors"
-              title="Approve"
+              onClick={() => onMarkBarryImported(draft.id)}
+              className="p-2 rounded-lg hover:bg-blue-100 text-blue-600 dark:hover:bg-blue-900/30 transition-colors"
+              title="Mark as imported to Barry"
             >
-              <CheckCircle className="w-4 h-4" />
+              <Database className="w-4 h-4" />
             </button>
           )}
         </div>
