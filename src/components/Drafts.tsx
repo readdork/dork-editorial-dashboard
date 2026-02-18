@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { supabase, type Draft } from '../lib/supabase'
-import { CheckCircle, Loader2, Trash2, Globe, RefreshCw, Edit2, Save } from 'lucide-react'
+import { CheckCircle, Loader2, Trash2, RefreshCw, Edit2, Save } from 'lucide-react'
 
 interface ExtendedDraft extends Draft {
   section?: string
   artist_names?: string[]
   featured_image?: string
+  wordpress_post_id?: number
+  wordpress_status?: string
 }
 
 export function Drafts() {
@@ -46,18 +48,25 @@ export function Drafts() {
   }
 
   async function saveEdit(id: string) {
-    await supabase.from('editorial_drafts').update(editForm).eq('id', id)
-    setEditing(null)
-    fetchDrafts()
+    try {
+      const { error } = await supabase.from('editorial_drafts').update(editForm).eq('id', id)
+      if (error) throw error
+      alert('Changes saved successfully')
+      setEditing(null)
+      fetchDrafts()
+    } catch (err) {
+      alert('Failed to save changes: ' + (err as Error).message)
+      console.error(err)
+    }
   }
 
-  async function approve(id: string) {
-    await supabase.from('editorial_drafts').update({ status: 'approved' }).eq('id', id)
-    setDrafts(drafts.filter(d => d.id !== id))
-  }
-
-  async function publishToWordPress(draft: ExtendedDraft) {
-    setPublishing(draft.id)
+  async function approveAndPublish(id: string) {
+    const draft = drafts.find(d => d.id === id)
+    if (!draft) return
+    
+    if (!confirm('Publish this draft to WordPress?')) return
+    
+    setPublishing(id)
     try {
       const wpUrl = import.meta.env.VITE_WORDPRESS_URL
       const username = import.meta.env.VITE_WORDPRESS_USER
@@ -87,15 +96,15 @@ export function Drafts() {
       const wpPost = await response.json()
       
       await supabase.from('editorial_drafts').update({
-        status: 'approved',
+        status: 'published',
         wordpress_post_id: wpPost.id,
         wordpress_status: 'draft'
-      }).eq('id', draft.id)
+      }).eq('id', id)
 
-      setDrafts(drafts.filter(d => d.id !== draft.id))
-      alert(`Published to WordPress as draft. ID: ${wpPost.id}`)
+      setDrafts(drafts.filter(d => d.id !== id))
+      alert(`Published to WordPress! Post ID: ${wpPost.id}`)
     } catch (err) {
-      alert('Failed to publish to WordPress')
+      alert('Failed to publish: ' + (err as Error).message)
       console.error(err)
     } finally {
       setPublishing(null)
@@ -227,21 +236,27 @@ export function Drafts() {
                   <pre className="text-sm whitespace-pre-wrap font-sans">{formatContentForDisplay(draft.content)}</pre>
                 </div>
                 
+                
+                {draft.wordpress_post_id && (
+                  <div className="bg-green-50 p-2 rounded mb-3 text-sm text-green-700">
+                    <strong>Published to WordPress:</strong> Post ID {draft.wordpress_post_id}
+                  </div>
+                )}
+                
                 <div className="flex gap-2 flex-wrap">
-                  <button 
-                    onClick={() => publishToWordPress(draft)} 
-                    disabled={publishing === draft.id}
-                    className="flex items-center gap-1 px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                  >
-                    <Globe className="w-4 h-4" /> {publishing === draft.id ? 'Publishing...' : 'Publish to WP'}
-                  </button>
-                  
-                  <button 
-                    onClick={() => approve(draft.id)}
-                    className="flex items-center gap-1 px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200"
-                  >
-                    <CheckCircle className="w-4 h-4" /> Approve
-                  </button>
+                  {!draft.wordpress_post_id ? (
+                    <button 
+                      onClick={() => approveAndPublish(draft.id)} 
+                      disabled={publishing === draft.id}
+                      className="flex items-center gap-1 px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                    >
+                      <CheckCircle className="w-4 h-4" /> {publishing === draft.id ? 'Publishing...' : 'Approve & Publish to WP'}
+                    </button>
+                  ) : (
+                    <span className="px-4 py-2 bg-green-100 text-green-700 rounded flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4" /> Published to WP (ID: {draft.wordpress_post_id})
+                    </span>
+                  )}
                 </div>
               </>
             )}
