@@ -48,42 +48,47 @@ function AppContent() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b p-4 flex justify-between items-center sticky top-0 z-10">
-          <div className="flex gap-2">
+      <div className="min-h-screen bg-gray-100">
+        <header className="bg-white border-b border-gray-200 p-3 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+          <div className="flex gap-2 overflow-x-auto">
             <button 
               onClick={() => setTab('feed')}
-              className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${tab === 'feed' ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 whitespace-nowrap transition-colors ${tab === 'feed' ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 hover:bg-gray-200'}`}
             >
-              <Rss className="w-4 h-4" /> Feed
-              {feedCount > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{feedCount}</span>}
+              <Rss className="w-4 h-4" /> 
+              <span className="hidden sm:inline">Feed</span>
+              {feedCount > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-1">{feedCount}</span>}
             </button>
             
             <button 
               onClick={() => setTab('gmail')}
-              className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${tab === 'gmail' ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 whitespace-nowrap transition-colors ${tab === 'gmail' ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 hover:bg-gray-200'}`}
             >
-              <Mail className="w-4 h-4" /> Gmail
-              {gmailCount > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{gmailCount}</span>}
+              <Mail className="w-4 h-4" /> 
+              <span className="hidden sm:inline">Gmail</span>
+              {gmailCount > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full ml-1">{gmailCount}</span>}
             </button>
             
             <button 
               onClick={() => setTab('drafts')}
-              className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 ${tab === 'drafts' ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 whitespace-nowrap transition-colors ${tab === 'drafts' ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 hover:bg-gray-200'}`}
             >
-              <FileText className="w-4 h-4" /> Drafts
-              {draftsCount > 0 && <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">{draftsCount}</span>}
+              <FileText className="w-4 h-4" /> 
+              <span className="hidden sm:inline">Drafts</span>
+              {draftsCount > 0 && <span className="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full ml-1">{draftsCount}</span>}
             </button>
           </div>
           
-          <button onClick={logout} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={logout} className="p-2 hover:bg-gray-100 rounded-lg text-gray-600">
             <LogOut className="w-5 h-5" />
           </button>
         </header>
         
-        {tab === 'feed' && <FeedInbox />}
-        {tab === 'gmail' && <GmailInbox />}
-        {tab === 'drafts' && <Drafts />}
+        <main className="pb-8">
+          {tab === 'feed' && <FeedInbox />}
+          {tab === 'gmail' && <GmailInbox />}
+          {tab === 'drafts' && <Drafts />}
+        </main>
       </div>
     </BrowserRouter>
   )

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase, type Story } from '../lib/supabase'
-import { CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, RefreshCw, ExternalLink } from 'lucide-react'
+import { CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, RefreshCw, ExternalLink, Clock } from 'lucide-react'
 
 export function FeedInbox() {
   const [stories, setStories] = useState<Story[]>([])
@@ -47,70 +47,113 @@ export function FeedInbox() {
     setStories(stories.filter(s => s.id !== id))
   }
 
-  if (loading) return <div className="p-8"><Loader2 className="animate-spin" /></div>
+  function formatTimeAgo(date: string) {
+    const now = new Date()
+    const then = new Date(date)
+    const diff = Math.floor((now.getTime() - then.getTime()) / 1000)
+    
+    if (diff < 60) return 'just now'
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+    return `${Math.floor(diff / 86400)}d ago`
+  }
+
+  if (loading) return (
+    <div className="p-8 flex justify-center">
+      <Loader2 className="animate-spin w-8 h-8 text-blue-600" />
+    </div>
+  )
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
+    <div className="p-3 sm:p-4 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Feed Inbox ({stories.length})</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Feed Inbox</h1>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Updated: {lastRefresh.toLocaleTimeString()}</span>
-          <button onClick={refreshFeeds} className="p-2 hover:bg-gray-100 rounded" title="Refresh RSS feeds only">
-            <RefreshCw className="w-4 h-4" />
+          <span className="text-xs sm:text-sm text-gray-500 hidden sm:inline">Updated {formatTimeAgo(lastRefresh.toISOString())}</span>
+          <button 
+            onClick={refreshFeeds} 
+            className="p-2 hover:bg-white rounded-lg shadow-sm border border-gray-200 transition-colors"
+            title="Refresh RSS feeds"
+          >
+            <RefreshCw className="w-4 h-4 text-gray-600" />
           </button>
         </div>
       </div>
+      
       {stories.length === 0 ? (
-        <p className="text-gray-500">No pending RSS items</p>
+        <div className="text-center py-12">
+          <p className="text-gray-500">No pending items</p>
+        </div>
       ) : (
-        stories.map(story => (
-          <div key={story.id} className="border p-4 mb-3 rounded shadow-sm bg-white">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold text-lg">{story.title}</h3>
-                <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-                  <span>{story.source}</span>
-                  <span>•</span>
-                  <span>{new Date(story.published_at).toLocaleString()}</span>
+        <div className="space-y-3">
+          {stories.map(story => (
+            <article key={story.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-4">
+                <div className="flex justify-between items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-base sm:text-lg text-gray-900 leading-tight">{story.title}</h3>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm text-gray-500">
+                      <span className="font-medium text-blue-600">{story.source}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatTimeAgo(story.published_at)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <a 
+                    href={story.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600 transition-colors"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                  </a>
+                </div>
+                
+                {expanded === story.id ? (
+                  <div className="mt-4">
+                    <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed">
+                      {story.summary}
+                    </div>
+                    <button 
+                      onClick={() => setExpanded(null)}
+                      className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
+                    >
+                      <ChevronUp className="w-4 h-4" /> Show less
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">{story.summary}</p>
+                    <button 
+                      onClick={() => setExpanded(story.id)}
+                      className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
+                    >
+                      <ChevronDown className="w-4 h-4" /> Read more
+                    </button>
+                  </div>
+                )}
+                
+                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                  <button 
+                    onClick={() => approve(story.id)} 
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 font-medium transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" /> Approve
+                  </button>
+                  <button 
+                    onClick={() => reject(story.id)} 
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors"
+                  >
+                    <XCircle className="w-4 h-4" /> Reject
+                  </button>
                 </div>
               </div>
-              <a href={story.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
-                <ExternalLink className="w-5 h-5" />
-              </a>
-            </div>
-            
-            {expanded === story.id ? (
-              <div className="mb-3 mt-3">
-                <p className="text-sm whitespace-pre-wrap bg-gray-50 p-3 rounded">{story.summary}</p>
-                <button 
-                  onClick={() => setExpanded(null)}
-                  className="text-sm text-blue-600 flex items-center gap-1 mt-2"
-                >
-                  <ChevronUp className="w-4 h-4" /> Show less
-                </button>
-              </div>
-            ) : (
-              <div className="mb-3 mt-3">
-                <p className="text-sm line-clamp-3">{story.summary}</p>
-                <button 
-                  onClick={() => setExpanded(story.id)}
-                  className="text-sm text-blue-600 flex items-center gap-1 mt-1"
-                >
-                  <ChevronDown className="w-4 h-4" /> Read full article
-                </button>
-              </div>
-            )}
-            
-            <div className="flex gap-2">
-              <button onClick={() => approve(story.id)} className="flex items-center gap-1 px-4 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200">
-                <CheckCircle className="w-4 h-4" /> Approve
-              </button>
-              <button onClick={() => reject(story.id)} className="flex items-center gap-1 px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200">
-                <XCircle className="w-4 h-4" /> Reject
-              </button>
-            </div>
-          </div>
-        ))
+            </article>
+          ))}
+        </div>
       )}
     </div>
   )
