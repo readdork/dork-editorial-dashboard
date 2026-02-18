@@ -8,6 +8,7 @@ import { DraftQueue } from './components/DraftQueue'
 import { WordPressManager } from './components/WordPressManager'
 import { BarryImport } from './components/BarryImport'
 import { Notifications } from './components/Notifications'
+import { PressInbox } from './components/PressInbox'
 
 function AppContent() {
   const { isAuthenticated, userRole, logout } = useAuth()
@@ -21,6 +22,7 @@ function AppContent() {
       <Layout userRole={userRole!} onRoleSwitch={logout}>
         <Routes>
           <Route path="/" element={<FeedInbox userRole={userRole!} />} />
+          <Route path="/press" element={<PressInbox userRole={userRole!} />} />
           <Route path="/drafts" element={<DraftQueue userRole={userRole!} />} />
           <Route path="/wordpress" element={<WordPressManager userRole={userRole!} />} />
           <Route path="/barry" element={<BarryImport userRole={userRole!} />} />

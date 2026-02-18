@@ -9,7 +9,8 @@ import {
   Sun, 
   Menu,
   X,
-  LogOut
+  LogOut,
+  Mail
 } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 
@@ -23,6 +24,7 @@ interface LayoutProps {
 
 const navItems = [
   { path: '/', label: 'Feed Inbox', icon: Inbox, description: 'Review and approve stories' },
+  { path: '/press', label: 'Press Inbox', icon: Mail, description: 'Press releases from Gmail' },
   { path: '/drafts', label: 'Drafts', icon: FileText, description: 'Write and edit articles' },
   { path: '/wordpress', label: 'WordPress', icon: Globe, description: 'Manage published content' },
   { path: '/barry', label: 'Barry Import', icon: Database, description: 'Sync to Barry system' },
