@@ -1,13 +1,46 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Debug: Log env vars (remove after fixing)
-console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL)
-console.log('VITE_SUPABASE_ANON_KEY exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY)
-
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
+
+// For server-side operations, use the Netlify Function proxy
+export const supabaseServer = {
+  async query(table: string, query: string = '') {
+    const response = await fetch(`/.netlify/functions/supabase/${table}${query}`, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return response.json()
+  },
+  
+  async insert(table: string, data: any) {
+    const response = await fetch(`/.netlify/functions/supabase/${table}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return response.json()
+  },
+  
+  async update(table: string, id: string, data: any) {
+    const response = await fetch(`/.netlify/functions/supabase/${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    return response.json()
+  }
+}
 
 // Database types
 export type FeedItem = {

@@ -12,6 +12,8 @@
   VITE_CLOUDINARY_CLOUD_NAME = "dqsjmrzp1"
   VITE_TELEGRAM_BOT_TOKEN = "8334499958:AAF6FCeRsQfwVNhSqLrD_RBDjouOxv7FC9Y"
   VITE_TELEGRAM_CHAT_ID = "8397675850"
+  SUPABASE_URL = "https://tgtumixhqhzrjubppeep.supabase.co"
+  SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRndHVtaXhocWh6cmp1YnBwZWVwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzA3MTYzMywiZXhwIjoyMDc4NjQ3NjMzfQ.zfwef_7n1kG-4nvaHU463z6TkI1RRrElq8kpoyYVG1g"
 
 [[redirects]]
   from = "/*"
