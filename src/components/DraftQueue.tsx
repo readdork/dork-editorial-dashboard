@@ -15,7 +15,8 @@ import {
   Save,
   RefreshCw,
   Globe,
-  Database
+  Database,
+  MessageSquare
 } from 'lucide-react'
 
 interface DraftQueueProps {
@@ -39,7 +40,10 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
     content: '',
     featured_image: '',
     section: 'None' as 'Upset' | 'Hype' | 'Festivals' | 'None',
+    feedback: '',
   })
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [feedbackText, setFeedbackText] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => {
@@ -73,6 +77,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       content: draft.content,
       featured_image: draft.featured_image || '',
       section: (draft as any).section || 'None',
+      feedback: (draft as any).feedback || '',
     })
     setShowEditor(true)
   }
@@ -86,6 +91,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       content: '',
       featured_image: '',
       section: 'None',
+      feedback: '',
     })
     setShowEditor(true)
   }
@@ -148,27 +154,60 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
     )
   }
 
+  // Stephen sends back with feedback
+  async function handleSendBackWithFeedback() {
+    if (!editingDraft || !feedbackText.trim()) return
+    
+    try {
+      const { error } = await supabase
+        .from('editorial_drafts')
+        .update({
+          status: 'draft',
+          feedback: feedbackText,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingDraft.id)
+      
+      if (error) throw error
+      
+      await telegramApi.sendNotification(
+        'Draft Needs Revision',
+        `Stephen sent back "${formData.title}" with feedback:\n${feedbackText}`,
+        'high'
+      )
+      
+      setDrafts(drafts.map(d => 
+        d.id === editingDraft.id 
+          ? { ...d, status: 'draft', feedback: feedbackText }
+          : d
+      ))
+      setShowFeedbackModal(false)
+      setShowEditor(false)
+      setFeedbackText('')
+    } catch (err) {
+      alert('Could not send feedback.')
+    }
+  }
+
   // Stephen approves and publishes to WordPress
   async function handleApproveAndPublish() {
     if (!editingDraft) return
     
     setPublishing(true)
     try {
-      // First save as in_review (not approved yet, that happens after WP publish)
-      await handleSave('in_review')
-      
-      // Then publish to WordPress
+      // Publish to WordPress
       const wpPost = await wordpressApi.createPost({
         title: formData.title,
         content: formData.content,
         excerpt: formData.excerpt,
         slug: formData.slug,
-        status: 'draft', // Always publish as draft first
+        status: 'draft',
       })
 
       const { error } = await supabase
         .from('editorial_drafts')
         .update({
+          status: 'approved',
           wordpress_post_id: wpPost.id,
           wordpress_status: 'draft',
           updated_at: new Date().toISOString(),
@@ -458,15 +497,63 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
               )}
               
               {userRole === 'stephen' && editingDraft?.status === 'in_review' && (
-                <button
-                  onClick={handleApproveAndPublish}
-                  disabled={publishing}
-                  className="btn-primary"
-                >
-                  <Globe className="w-4 h-4" />
-                  {publishing ? 'Publishing...' : 'Approve & Publish to WP'}
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowFeedbackModal(true)}
+                    disabled={publishing}
+                    className="btn-secondary bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
+                  >
+                    <X className="w-4 h-4" />
+                    Send Back with Feedback
+                  </button>
+                  <button
+                    onClick={handleApproveAndPublish}
+                    disabled={publishing}
+                    className="btn-primary"
+                  >
+                    <Globe className="w-4 h-4" />
+                    {publishing ? 'Publishing...' : 'Approve & Publish to WP'}
+                  </button>
+                </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setShowFeedbackModal(false)}
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-4">Send Back with Feedback</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Explain what needs to be changed so Dan can learn:
+            </p>
+            <textarea
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              className="editor-input min-h-[120px]"
+              placeholder="e.g., The tone is too promotional. Remove phrases like 'hotly-tipped' and focus on facts. Also check the date formatting..."
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setShowFeedbackModal(false)}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendBackWithFeedback}
+                disabled={!feedbackText.trim()}
+                className="btn-primary bg-red-600 hover:bg-red-700"
+              >
+                Send Back
+              </button>
             </div>
           </div>
         </div>
@@ -527,7 +614,20 @@ function DraftCard({
                 Barry
               </span>
             )}
+            {(draft as any).feedback && (
+              <span className="flex items-center gap-1 text-amber-600">
+                <MessageSquare className="w-3 h-3" />
+                Has Feedback
+              </span>
+            )}
           </div>
+          
+          {(draft as any).feedback && (
+            <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 rounded text-sm text-amber-800 dark:text-amber-200">
+              <span className="font-medium">Feedback: </span>
+              {(draft as any).feedback}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-1">
