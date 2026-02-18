@@ -46,7 +46,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
   async function fetchDrafts() {
     try {
       const { data, error } = await supabase
-        .from('drafts')
+        .from('editorial_drafts')
         .select('*')
         .order('updated_at', { ascending: false })
       
@@ -102,7 +102,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
 
       if (editingDraft) {
         const { error } = await supabase
-          .from('drafts')
+          .from('editorial_drafts')
           .update(draftData)
           .eq('id', editingDraft.id)
         
@@ -111,7 +111,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
         setDrafts(drafts.map(d => d.id === editingDraft.id ? { ...d, ...draftData } : d))
       } else {
         const { data, error } = await supabase
-          .from('drafts')
+          .from('editorial_drafts')
           .insert([{ ...draftData, created_by: userRole }])
           .select()
           .single()
@@ -150,7 +150,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
       })
 
       const { error } = await supabase
-        .from('drafts')
+        .from('editorial_drafts')
         .update({
           status: 'approved',
           wordpress_post_id: wpPost.id,
@@ -198,7 +198,7 @@ export function DraftQueue({ userRole }: DraftQueueProps) {
   async function handleApprove(draftId: string) {
     try {
       const { error } = await supabase
-        .from('drafts')
+        .from('editorial_drafts')
         .update({ status: 'approved', updated_at: new Date().toISOString() })
         .eq('id', draftId)
       

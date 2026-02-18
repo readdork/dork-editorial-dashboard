@@ -35,7 +35,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
     try {
       setLoading(true)
       const { data, error } = await supabase
-        .from('feed_items')
+        .from('editorial_stories')
         .select('*')
         .order('created_at', { ascending: false })
       
@@ -51,7 +51,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   async function handleApprove(id: string) {
     try {
       const { error } = await supabase
-        .from('feed_items')
+        .from('editorial_stories')
         .update({ status: 'approved', updated_at: new Date().toISOString() })
         .eq('id', id)
       
@@ -68,7 +68,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   async function handleReject(id: string) {
     try {
       const { error } = await supabase
-        .from('feed_items')
+        .from('editorial_stories')
         .update({ status: 'rejected', updated_at: new Date().toISOString() })
         .eq('id', id)
       
@@ -89,7 +89,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
     setAdding(true)
     try {
       const { data, error } = await supabase
-        .from('feed_items')
+        .from('editorial_stories')
         .insert([{
           title: newItem.title,
           url: newItem.url,
