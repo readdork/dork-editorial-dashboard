@@ -28,7 +28,7 @@ const navItems = [
   { path: '/barry', label: 'Barry Import', icon: Database, description: 'Sync to Barry system' },
 ]
 
-export function Layout({ children, userRole, onRoleSwitch }: LayoutProps) {
+export function Layout({ children, userRole: _userRole, onRoleSwitch }: LayoutProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -37,8 +37,8 @@ export function Layout({ children, userRole, onRoleSwitch }: LayoutProps) {
     setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
   }
 
-  const userName = userRole === 'dan' ? 'Dan Harrison' : 'Stephen Ackroyd'
-  const userTitle = userRole === 'dan' ? 'AI Deputy Editor' : 'Editor'
+  const userName = 'Stephen Ackroyd'
+  const userTitle = 'Editor'
 
   return (
     <div className="min-h-full flex flex-col">
@@ -101,8 +101,9 @@ export function Layout({ children, userRole, onRoleSwitch }: LayoutProps) {
               <button
                 onClick={onRoleSwitch}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dork-50 dark:bg-dork-900/30 text-dork-700 dark:text-dork-300 text-sm font-medium hover:bg-dork-100 dark:hover:bg-dork-900/50 transition-colors"
+                title="Logout"
               >
-                <span className="hidden sm:inline">{userRole === 'dan' ? 'Dan' : 'Stephen'}</span>
+                <span className="hidden sm:inline">Stephen</span>
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
