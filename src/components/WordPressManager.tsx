@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { wordpressApi, type WordPressPost } from '../lib/wordpress'
 import { supabase } from '../lib/supabase'
-import { Loader2, RefreshCw, ExternalLink } from 'lucide-react'
+import { Loader2, RefreshCw, ExternalLink, Globe, FileText } from 'lucide-react'
 
 interface WordPressManagerProps {
   userRole: 'dan' | 'stephen'
@@ -23,12 +23,11 @@ export function WordPressManager({ userRole: _userRole }: WordPressManagerProps)
       const wpPosts = await wordpressApi.getPosts(activeTab, 20)
       setPosts(wpPosts)
       
-      // Sync with Supabase for Barry tracking
       if (activeTab === 'published') {
         await syncPublishedPosts(wpPosts)
       }
     } catch (err) {
-      console.error('Failed to fetch posts:', err)
+      console.error('Failed to load posts:', err)
     } finally {
       setLoading(false)
     }
@@ -69,84 +68,93 @@ export function WordPressManager({ userRole: _userRole }: WordPressManagerProps)
   const wpUrl = import.meta.env.VITE_WORDPRESS_URL || ''
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">WordPress Integration</h1>
+    <div className="space-y-6 animate-slide-up">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">WordPress</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage your published content
+          </p>
+        </div>
+        
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="flex items-center gap-2 px-4 py-2 rounded-md border border-input hover:bg-accent disabled:opacity-50"
+          className="btn-secondary self-start"
         >
-          <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
           {syncing ? 'Syncing...' : 'Sync'}
         </button>
       </div>
 
-      <div className="flex gap-2 border-b border-border">
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
         <button
           onClick={() => setActiveTab('drafts')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
             activeTab === 'drafts'
-              ? 'border-dork-600 text-dork-600'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'bg-white dark:bg-gray-700 text-dork-600 dark:text-dork-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
+          <FileText className="w-4 h-4" />
           Drafts
         </button>
         <button
           onClick={() => setActiveTab('published')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
             activeTab === 'published'
-              ? 'border-dork-600 text-dork-600'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
+              ? 'bg-white dark:bg-gray-700 text-dork-600 dark:text-dork-400 shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
+          <Globe className="w-4 h-4" />
           Published
         </button>
       </div>
 
+      {/* Posts List */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-dork-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-dork-600" />
         </div>
       ) : posts.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          No {activeTab} posts found
+        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+          <Globe className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>No {activeTab} posts found</p>
         </div>
       ) : (
         <div className="space-y-3">
           {posts.map((post) => (
-            <div 
-              key={post.id} 
-              className="p-4 rounded-lg border border-border bg-card hover:border-dork-300 transition-colors"
-            >
+            <div key={post.id} className="editor-card">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <h3 
-                    className="font-medium truncate"
+                    className="font-medium text-lg truncate"
                     dangerouslySetInnerHTML={{ __html: post.title.rendered }}
                   />
                   <p 
-                    className="text-sm text-muted-foreground line-clamp-2 mt-1"
+                    className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1"
                     dangerouslySetInnerHTML={{ __html: post.excerpt.rendered }}
                   />
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-3 mt-3 text-xs text-gray-500 dark:text-gray-400">
                     <span>{new Date(post.date).toLocaleDateString()}</span>
-                    <span className="capitalize">{post.status}</span>
+                    <span className="capitalize px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">
+                      {post.status}
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <a
-                    href={`${wpUrl}/wp-admin/post.php?post=${post.id}&action=edit`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-md hover:bg-accent"
-                    title="Edit in WordPress"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
+                <a
+                  href={`${wpUrl}/wp-admin/post.php?post=${post.id}&action=edit`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  title="Edit in WordPress"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
               </div>
             </div>
           ))}

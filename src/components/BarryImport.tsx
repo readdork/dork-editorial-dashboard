@@ -6,7 +6,8 @@ import {
   CheckCircle, 
   Database, 
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  ArrowRight
 } from 'lucide-react'
 
 interface BarryImportProps {
@@ -33,7 +34,7 @@ export function BarryImport({ userRole: _userRole }: BarryImportProps) {
       if (error) throw error
       setArticles(data || [])
     } catch (err) {
-      console.error('Failed to fetch articles:', err)
+      console.error('Failed to load articles:', err)
     } finally {
       setLoading(false)
     }
@@ -42,9 +43,6 @@ export function BarryImport({ userRole: _userRole }: BarryImportProps) {
   async function handleImport(article: WordPressArticle) {
     setImporting(article.id)
     try {
-      // Simulate Barry import - in production, this would call the Barry API
-      // For now, we mark it as imported in Supabase
-      
       const { error } = await supabase
         .from('wordpress_articles')
         .update({
@@ -55,16 +53,15 @@ export function BarryImport({ userRole: _userRole }: BarryImportProps) {
 
       if (error) throw error
 
-      // Remove from list
       setArticles(articles.filter(a => a.id !== article.id))
 
       await telegramApi.sendNotification(
-        'Article Imported to Barry',
-        `"${article.title}" has been imported to Barry`,
+        'Imported to Barry',
+        `"${article.title}" is now in Barry`,
         'low'
       )
     } catch (err) {
-      alert('Failed to import article')
+      alert('Could not import. Try again.')
     } finally {
       setImporting(null)
     }
@@ -75,59 +72,63 @@ export function BarryImport({ userRole: _userRole }: BarryImportProps) {
     await fetchArticles()
   }
 
-  const pendingCount = articles.filter(a => !a.barry_imported).length
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 animate-slide-up">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Barry Import Tracking</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {pendingCount} articles pending import
+          <h1 className="text-2xl font-bold">Barry Import</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {articles.length} article{articles.length !== 1 ? 's' : ''} waiting to import
           </p>
         </div>
         
         <button
           onClick={handleRefresh}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-md border border-input hover:bg-accent disabled:opacity-50"
+          className="btn-secondary self-start"
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
 
+      {/* Articles List */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-dork-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-dork-600" />
         </div>
       ) : articles.length === 0 ? (
-        <div className="text-center py-12">
-          <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium">All caught up!</h3>
-          <p className="text-muted-foreground">No articles pending Barry import</p>
+        <div className="text-center py-16">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4"
+          >
+            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+          </div>
+          <h3 className="text-lg font-medium">All caught up</h3>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">No articles waiting to import</p>
         </div>
       ) : (
         <div className="space-y-3">
           {articles.map((article) => (
-            <div 
-              key={article.id} 
-              className="p-4 rounded-lg border border-border bg-card"
-            >
+            <div key={article.id} className="editor-card">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{article.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{article.excerpt}</p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    <span>Published: {new Date(article.published_at).toLocaleDateString()}</span>
+                  <h3 className="font-medium text-lg truncate">{article.title}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mt-1"
+                    dangerouslySetInnerHTML={{ __html: article.excerpt }}
+                  />
+                  <div className="flex items-center gap-4 mt-3">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Published {new Date(article.published_at).toLocaleDateString()}
+                    </span>
                     <a
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-dork-600 hover:underline"
+                      className="text-xs text-dork-600 dark:text-dork-400 hover:underline flex items-center gap-1"
                     >
                       View on site
-                      <ExternalLink className="h-3 w-3" />
+                      <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
                 </div>
@@ -135,17 +136,18 @@ export function BarryImport({ userRole: _userRole }: BarryImportProps) {
                 <button
                   onClick={() => handleImport(article)}
                   disabled={importing === article.id}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-dork-600 text-white hover:bg-dork-700 disabled:opacity-50"
+                  className="btn-primary whitespace-nowrap"
                 >
                   {importing === article.id ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Importing...
                     </>
                   ) : (
                     <>
-                      <Database className="h-4 w-4" />
-                      Import to Barry
+                      <Database className="w-4 h-4" />
+                      Import
+                      <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>

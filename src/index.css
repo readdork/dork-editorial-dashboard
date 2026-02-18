@@ -2,56 +2,178 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 201 96% 32%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 201 96% 32%;
-  --radius: 0.5rem;
+@layer base {
+  :root {
+    --color-bg: 249 250 251;
+    --color-text: 17 24 39;
+    --color-primary: 2 132 199;
+    --color-secondary: 111 66 193;
+    --color-accent: 13 110 253;
+    --color-success: 25 135 84;
+    --color-warning: 255 193 7;
+    --color-error: 220 53 69;
+    --color-border: 229 231 235;
+    --color-muted: 156 163 175;
+  }
+
+  .dark {
+    --color-bg: 17 24 39;
+    --color-text: 249 250 251;
+    --color-primary: 56 189 248;
+    --color-secondary: 139 92 246;
+    --color-accent: 96 165 250;
+    --color-success: 74 222 128;
+    --color-warning: 250 204 21;
+    --color-error: 248 113 113;
+    --color-border: 55 65 81;
+    --color-muted: 156 163 175;
+  }
+
+  html {
+    @apply min-h-full;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply min-h-full antialiased;
+    background-color: rgb(var(--color-bg));
+    color: rgb(var(--color-text));
+    font-feature-settings: "ss01", "ss02";
+  }
+
+  ::selection {
+    @apply bg-dork-500 text-white;
+  }
 }
 
-.dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 199 89% 48%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 199 89% 48%;
+@layer components {
+  .editor-container {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .editor-card {
+    @apply bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl rounded-2xl p-6 
+    border border-gray-200 dark:border-gray-800 
+    transition-all duration-300
+    hover:shadow-lg hover:shadow-dork-500/5
+    hover:border-dork-300 dark:hover:border-dork-700;
+  }
+
+  .editor-input {
+    @apply block w-full rounded-xl border-gray-200 dark:border-gray-700
+    bg-white dark:bg-gray-800
+    focus:border-dork-500 focus:ring-2 focus:ring-dork-500/20
+    transition-all duration-200
+    hover:border-dork-300 dark:hover:border-dork-600
+    text-base;
+  }
+
+  .editor-textarea {
+    @apply block w-full rounded-xl border-gray-200 dark:border-gray-700
+    bg-white dark:bg-gray-800
+    focus:border-dork-500 focus:ring-2 focus:ring-dork-500/20
+    transition-all duration-200
+    hover:border-dork-300 dark:hover:border-dork-600
+    font-mono text-sm leading-relaxed resize-none;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-5 py-2.5
+    text-sm font-semibold rounded-xl
+    text-white bg-dork-600
+    hover:bg-dork-700
+    focus:outline-none focus:ring-2 focus:ring-dork-500/50
+    transition-all duration-200
+    disabled:opacity-50 disabled:cursor-not-allowed
+    gap-2 shadow-sm hover:shadow-md hover:shadow-dork-500/20
+    active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-5 py-2.5
+    text-sm font-semibold rounded-xl
+    text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800
+    border border-gray-200 dark:border-gray-700
+    hover:bg-gray-50 dark:hover:bg-gray-700
+    hover:border-dork-300 dark:hover:border-dork-600
+    focus:outline-none focus:ring-2 focus:ring-dork-500/50
+    transition-all duration-200
+    disabled:opacity-50 disabled:cursor-not-allowed
+    gap-2
+    active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-4 py-2
+    text-sm font-medium rounded-lg
+    text-gray-600 dark:text-gray-400
+    hover:bg-gray-100 dark:hover:bg-gray-800
+    hover:text-gray-900 dark:hover:text-gray-100
+    transition-all duration-200
+    gap-2;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-pending {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300;
+  }
+
+  .status-approved {
+    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300;
+  }
+
+  .status-rejected {
+    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300;
+  }
+
+  .status-draft {
+    @apply bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300;
+  }
+
+  .status-review {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+    transition-all duration-200;
+  }
+
+  .nav-link-active {
+    @apply bg-dork-100 text-dork-700 dark:bg-dork-900/50 dark:text-dork-300;
+  }
+
+  .nav-link-inactive {
+    @apply text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100;
+  }
 }
 
-* {
-  border-color: hsl(var(--border));
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-600;
+}
+
+/* Animation utilities */
+.animate-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
 }

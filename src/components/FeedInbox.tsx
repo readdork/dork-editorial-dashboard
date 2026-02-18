@@ -8,7 +8,9 @@ import {
   ExternalLink, 
   Plus,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Inbox,
+  Search
 } from 'lucide-react'
 
 interface FeedInboxProps {
@@ -22,6 +24,8 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
   const [showAddModal, setShowAddModal] = useState(false)
   const [newItem, setNewItem] = useState({ title: '', url: '', source: '', artist_name: '' })
   const [adding, setAdding] = useState(false)
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     fetchItems()
@@ -38,7 +42,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
       if (error) throw error
       setItems(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch items')
+      setError(err instanceof Error ? err.message : 'Failed to load feed items')
     } finally {
       setLoading(false)
     }
@@ -57,7 +61,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
         item.id === id ? { ...item, status: 'approved' } : item
       ))
     } catch (err) {
-      alert('Failed to approve item')
+      alert('Could not approve item. Try again.')
     }
   }
 
@@ -74,7 +78,7 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
         item.id === id ? { ...item, status: 'rejected' } : item
       ))
     } catch (err) {
-      alert('Failed to reject item')
+      alert('Could not reject item. Try again.')
     }
   }
 
@@ -104,219 +108,272 @@ export function FeedInbox({ userRole }: FeedInboxProps) {
       setShowAddModal(false)
       setNewItem({ title: '', url: '', source: '', artist_name: '' })
       
-      // Notify other user
       const notifyUser = userRole === 'dan' ? 'Stephen' : 'Dan'
       await telegramApi.sendNotification(
-        'New Feed Item Added',
-        `${notifyUser} added: "${data.title}"`,
+        'New story added',
+        `${notifyUser} added "${data.title}" to the feed`,
         'medium'
       )
     } catch (err) {
-      alert('Failed to add item')
+      alert('Could not add item. Check your connection.')
     } finally {
       setAdding(false)
     }
   }
 
-  const pendingItems = items.filter(item => item.status === 'pending')
-  const approvedItems = items.filter(item => item.status === 'approved')
+  const filteredItems = items.filter(item => {
+    if (filter !== 'all' && item.status !== filter) return false
+    if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
+
+  const pendingCount = items.filter(i => i.status === 'pending').length
+  const approvedCount = items.filter(i => i.status === 'approved').length
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-dork-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-dork-600" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 text-destructive">
-        <AlertCircle className="h-5 w-5 mr-2" />
+      <div className="flex items-center justify-center h-64 text-red-600">
+        <AlertCircle className="w-5 h-5 mr-2" />
         {error}
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Feed Inbox</h1>
+    <div className="space-y-6 animate-slide-up">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Feed Inbox</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {pendingCount} pending, {approvedCount} approved
+          </p>
+        </div>
+        
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-dork-600 text-white rounded-md hover:bg-dork-700"
+          className="btn-primary self-start"
         >
-          <Plus className="h-4 w-4" />
-          Add Item
+          <Plus className="w-4 h-4" />
+          Add story
         </button>
       </div>
 
-      {/* Pending Items */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-yellow-500" />
-          Pending ({pendingItems.length})
-        </h2>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search stories..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="editor-input pl-10"
+          />
+        </div>
         
-        {pendingItems.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No pending items</p>
+        <div className="flex gap-2">
+          {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
+                filter === f
+                  ? 'bg-dork-100 text-dork-700 dark:bg-dork-900/30 dark:text-dork-300'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Items List */}
+      <div className="space-y-3">
+        {filteredItems.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <Inbox className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>No stories found</p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {pendingItems.map(item => (
-              <div 
-                key={item.id}
-                className={`p-4 rounded-lg border ${item.priority ? 'border-dork-500 bg-dork-50 dark:bg-dork-950/30' : 'border-border bg-card'}`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {item.priority && <Star className="h-4 w-4 text-dork-500 fill-dork-500" />}
-                      <h3 className="font-medium truncate">{item.title}</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{item.source}</p>
-                    {item.artist_name && (
-                      <p className="text-sm text-dork-600 dark:text-dork-400 mt-1">Artist: {item.artist_name}</p>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 rounded-md hover:bg-accent"
-                      title="Open link"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                    
-                    {userRole === 'stephen' && (
-                      <>
-                        <button
-                          onClick={() => handleApprove(item.id)}
-                          className="p-2 rounded-md bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-300"
-                          title="Approve"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleReject(item.id)}
-                          className="p-2 rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900 dark:text-red-300"
-                          title="Reject"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          filteredItems.map((item) => (
+            <FeedItemCard 
+              key={item.id}
+              item={item}
+              userRole={userRole}
+              onApprove={handleApprove}
+              onReject={handleReject}
+            />
+          ))
         )}
-      </section>
+      </div>
 
-      {/* Approved Items */}
-      {approvedItems.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
-            Approved ({approvedItems.length})
-          </h2>
-          <div className="space-y-2">
-            {approvedItems.slice(0, 5).map(item => (
-              <div key={item.id} className="p-3 rounded-lg border border-border bg-card/50">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium truncate">{item.title}</p>
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-dork-600 hover:underline text-sm"
-                  >
-                    View
-                  </a>
-                </div>
-              </div>
-            ))}
-            {approvedItems.length > 5 && (
-              <p className="text-sm text-muted-foreground text-center">+{approvedItems.length - 5} more</p>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Add Item Modal */}
+      {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-background rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Add Feed Item</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-md shadow-xl"
+          >
+            <h2 className="text-lg font-semibold mb-4">Add new story</h2>
             
             <form onSubmit={handleAddItem} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
+                <label className="block text-sm font-medium mb-1.5">Title</label>
                 <input
                   type="text"
                   value={newItem.title}
                   onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background"
+                  className="editor-input"
+                  placeholder="What's the story?"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1">URL *</label>
+                <label className="block text-sm font-medium mb-1.5">URL</label>
                 <input
                   type="url"
                   value={newItem.url}
                   onChange={(e) => setNewItem({ ...newItem, url: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background"
+                  className="editor-input"
+                  placeholder="https://..."
                   required
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-1">Source</label>
-                <input
-                  type="text"
-                  value={newItem.source}
-                  onChange={(e) => setNewItem({ ...newItem, source: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background"
-                  placeholder="e.g., NME, Stereogum"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Source</label>
+                  <input
+                    type="text"
+                    value={newItem.source}
+                    onChange={(e) => setNewItem({ ...newItem, source: e.target.value })}
+                    className="editor-input"
+                    placeholder="NME, Stereogum..."
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Artist (optional)</label>
+                  <input
+                    type="text"
+                    value={newItem.artist_name}
+                    onChange={(e) => setNewItem({ ...newItem, artist_name: e.target.value })}
+                    className="editor-input"
+                    placeholder="Artist name"
+                  />
+                </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium mb-1">Artist Name</label>
-                <input
-                  type="text"
-                  value={newItem.artist_name}
-                  onChange={(e) => setNewItem({ ...newItem, artist_name: e.target.value })}
-                  className="w-full px-3 py-2 rounded-md border border-input bg-background"
-                  placeholder="For priority tracking"
-                />
-              </div>
-              
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-md border border-input hover:bg-accent"
+                  className="btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={adding}
-                  className="px-4 py-2 rounded-md bg-dork-600 text-white hover:bg-dork-700 disabled:opacity-50"
+                  className="btn-primary"
                 >
-                  {adding ? 'Adding...' : 'Add Item'}
+                  {adding ? 'Adding...' : 'Add story'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function FeedItemCard({ 
+  item, 
+  userRole,
+  onApprove,
+  onReject
+}: { 
+  item: FeedItem
+  userRole: 'dan' | 'stephen'
+  onApprove: (id: string) => void
+  onReject: (id: string) => void
+}) {
+  const statusClasses = {
+    pending: 'status-pending',
+    approved: 'status-approved',
+    rejected: 'status-rejected',
+  }
+
+  return (
+    <div className={`editor-card ${item.priority ? 'ring-2 ring-dork-500/20' : ''}`}>
+      <div className="flex items-start gap-4">
+        {/* Priority indicator */}
+        {item.priority && (
+          <div className="flex-shrink-0">
+            <Star className="w-5 h-5 text-dork-500 fill-dork-500" />
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-medium text-lg leading-tight">{item.title}</h3>
+              <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <span className={statusClasses[item.status]}>{item.status}</span>
+                <span>•</span>
+                <span>{item.source}</span>
+                {item.artist_name && (
+                  <>
+                    <span>•</span>
+                    <span className="text-dork-600 dark:text-dork-400">{item.artist_name}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                title="Open link"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+
+              {userRole === 'stephen' && item.status === 'pending' && (
+                <>
+                  <button
+                    onClick={() => onApprove(item.id)}
+                    className="p-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 transition-colors"
+                    title="Approve"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onReject(item.id)}
+                    className="p-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 transition-colors"
+                    title="Reject"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

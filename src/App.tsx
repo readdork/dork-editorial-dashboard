@@ -7,7 +7,7 @@ import { DraftQueue } from './components/DraftQueue'
 import { WordPressManager } from './components/WordPressManager'
 import { BarryImport } from './components/BarryImport'
 import { Notifications } from './components/Notifications'
-import { UserCircle } from 'lucide-react'
+import { UserCircle, ArrowRight } from 'lucide-react'
 
 type UserRole = 'dan' | 'stephen' | null
 
@@ -17,41 +17,49 @@ function App() {
   if (!userRole) {
     return (
       <ThemeProvider>
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="w-full max-w-md space-y-6">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold text-dork-600 dark:text-dork-400">DORK</h1>
-              <p className="text-muted-foreground mt-2">Editorial Dashboard</p>
+        <div className="min-h-full flex items-center justify-center p-4">
+          <div className="w-full max-w-md space-y-8 animate-slide-up">
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 bg-dork-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-dork-500/20"
+              >
+                <span className="text-white font-bold text-2xl">D</span>
+              </div>
+              <h1 className="text-2xl font-bold">DORK Editorial</h1>
+              <p className="text-gray-500 dark:text-gray-400">Choose your role to continue</p>
             </div>
 
-            <div className="grid gap-4">
+            <div className="space-y-3">
               <button
                 onClick={() => setUserRole('dan')}
-                className="p-6 rounded-lg border border-border bg-card hover:border-dork-300 transition-colors text-left"
+                className="w-full group p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-dork-300 dark:hover:border-dork-700 transition-all duration-300 text-left shadow-sm hover:shadow-md"
               >
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-dork-100 dark:bg-dork-900">
-                    <UserCircle className="h-6 w-6 text-dork-600 dark:text-dork-400" />
+                  <div className="w-12 h-12 rounded-xl bg-dork-100 dark:bg-dork-900/30 flex items-center justify-center transition-transform group-hover:scale-110"
+                  >
+                    <UserCircle className="w-6 h-6 text-dork-600 dark:text-dork-400" />
                   </div>
-                  <div>
-                    <h2 className="font-semibold">Dan Harrison</h2>
-                    <p className="text-sm text-muted-foreground">AI Deputy Editor</p>
+                  <div className="flex-1">
+                    <h2 className="font-semibold text-lg">Dan Harrison</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">AI Deputy Editor</p>
                   </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-dork-500 transition-colors" />
                 </div>
               </button>
 
               <button
                 onClick={() => setUserRole('stephen')}
-                className="p-6 rounded-lg border border-border bg-card hover:border-dork-300 transition-colors text-left"
+                className="w-full group p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-dork-300 dark:hover:border-dork-700 transition-all duration-300 text-left shadow-sm hover:shadow-md"
               >
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-full bg-dork-100 dark:bg-dork-900">
-                    <UserCircle className="h-6 w-6 text-dork-600 dark:text-dork-400" />
+                  <div className="w-12 h-12 rounded-xl bg-dork-100 dark:bg-dork-900/30 flex items-center justify-center transition-transform group-hover:scale-110"
+                  >
+                    <UserCircle className="w-6 h-6 text-dork-600 dark:text-dork-400" />
                   </div>
-                  <div>
-                    <h2 className="font-semibold">Stephen Ackroyd</h2>
-                    <p className="text-sm text-muted-foreground">Editor</p>
+                  <div className="flex-1">
+                    <h2 className="font-semibold text-lg">Stephen Ackroyd</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Editor</p>
                   </div>
+                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-dork-500 transition-colors" />
                 </div>
               </button>
             </div>
