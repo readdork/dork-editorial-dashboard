@@ -9,10 +9,10 @@ export function FeedInbox() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
   useEffect(() => {
-    fetchStories()
+    loadStories()
   }, [])
 
-  async function fetchStories() {
+  async function loadStories() {
     setLoading(true)
     const { data } = await supabase
       .from('editorial_stories')
@@ -23,6 +23,21 @@ export function FeedInbox() {
     setStories(data || [])
     setLastRefresh(new Date())
     setLoading(false)
+  }
+
+  async function refreshFeeds() {
+    setLoading(true)
+    try {
+      // Call backend to trigger Feedly import
+      const response = await fetch('/.netlify/functions/refresh-feeds', { method: 'POST' })
+      if (!response.ok) {
+        console.log('Feedly refresh failed, RSS backup may be used')
+      }
+    } catch (e) {
+      console.log('Refresh endpoint not available')
+    }
+    // Always reload from database
+    await loadStories()
   }
 
   async function approve(id: string) {
@@ -43,7 +58,7 @@ export function FeedInbox() {
         <h1 className="text-2xl font-bold">Feed Inbox ({stories.length})</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">Updated: {lastRefresh.toLocaleTimeString()}</span>
-          <button onClick={fetchStories} className="p-2 hover:bg-gray-100 rounded">
+          <button onClick={refreshFeeds} className="p-2 hover:bg-gray-100 rounded" title="Refresh feeds (tries Feedly first, then RSS)">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
