@@ -46,10 +46,9 @@ export function GmailInbox() {
         return
       }
       
+      // Remove from local state and refresh
       setStories(stories.filter(s => s.id !== id))
-      
-      // Small delay to prevent race conditions
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await fetchStories()
     } catch (err) {
       console.error('Approve exception:', err)
       alert('Failed to approve: ' + (err as Error).message)
@@ -69,7 +68,9 @@ export function GmailInbox() {
         return
       }
       
+      // Remove from local state and refresh
       setStories(stories.filter(s => s.id !== id))
+      await fetchStories()
     } catch (err) {
       console.error('Reject exception:', err)
       alert('Failed to reject: ' + (err as Error).message)
