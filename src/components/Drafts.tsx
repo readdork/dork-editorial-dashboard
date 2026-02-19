@@ -145,6 +145,12 @@ export function Drafts() {
         wordpress_status: 'draft'
       }).eq('id', id)
 
+      // Delete the source story to remove it from the queue
+      const draft = drafts.find(d => d.id === id)
+      if (draft?.story_id) {
+        await supabase.from('editorial_stories').delete().eq('id', draft.story_id)
+      }
+
       setDrafts(drafts.filter(d => d.id !== id))
       alert(`Published to WordPress! Post ID: ${wpPost.id}`)
     } catch (err) {
