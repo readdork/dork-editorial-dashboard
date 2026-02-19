@@ -34,13 +34,46 @@ export function GmailInbox() {
   }
 
   async function approve(id: string) {
-    await supabase.from('editorial_stories').update({ status: 'approved' }).eq('id', id)
-    setStories(stories.filter(s => s.id !== id))
+    try {
+      const { error } = await supabase
+        .from('editorial_stories')
+        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .eq('id', id)
+      
+      if (error) {
+        console.error('Approve error:', error)
+        alert('Failed to approve: ' + error.message)
+        return
+      }
+      
+      setStories(stories.filter(s => s.id !== id))
+      
+      // Small delay to prevent race conditions
+      await new Promise(resolve => setTimeout(resolve, 100))
+    } catch (err) {
+      console.error('Approve exception:', err)
+      alert('Failed to approve: ' + (err as Error).message)
+    }
   }
 
   async function reject(id: string) {
-    await supabase.from('editorial_stories').update({ status: 'rejected' }).eq('id', id)
-    setStories(stories.filter(s => s.id !== id))
+    try {
+      const { error } = await supabase
+        .from('editorial_stories')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', id)
+      
+      if (error) {
+        console.error('Reject error:', error)
+        alert('Failed to reject: ' + error.message)
+        return
+      }
+      
+      setStories(stories.filter(s => s.id !== id))
+    } catch (err) {
+      console.error('Reject exception:', err)
+      alert('Failed to reject: ' + (err as Error).message)
+    }
   }
 
   function formatTimeAgo(date: string) {
